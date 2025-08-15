@@ -157,6 +157,37 @@ module.exports = function (app) {
     }
   );
 
+  // cohorts user joined
+  app.get(
+    "/v1/api/cohorts/joined",
+    [UrlMiddleware, TokenMiddleware({ role: "learner" })],
+    async function (req, res) {
+      try {
+        const sdk = new BackendSDK();
+        sdk.setTable("cohort_members");
+        const cohorts = await sdk.rawQuery(`
+          SELECT c.id, c.name, c.url, c.owner_type, c.cohort_goal, c.annual_revenue, c.referral_source, c.community_structure
+          FROM cohort_members cm
+          JOIN cohorts c ON cm.cohort_id = c.id
+          WHERE cm.user_id = ${req.user_id} AND cm.status = '${COHORT_LEARNER_STATUS.ACTIVE}'
+        `);
+
+        return res.status(200).json({
+          error: false,
+          message: "cohorts fetched successfully",
+          cohorts,
+        });
+      } catch (err) {
+        console.error(err);
+        res.status(500).json({
+          error: true,
+          message: "something went wrong",
+        });
+      }
+    }
+  )
+
+  // cohort created by user
   app.get(
     "/v1/api/cohorts",
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],

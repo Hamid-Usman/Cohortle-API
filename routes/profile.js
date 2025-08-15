@@ -27,11 +27,8 @@ module.exports = function (app) {
         await sdk.update({ role }, req.user_id);
 
         const token = JwtService.createAccessToken(
-          {
-            user_id: req.user_id,
-            role: role,
-          },
-          5 * 60 * 1000,
+          { user_id: req.user_id, role: role },
+          60 * 60 * 1000, // 1 hour
           process.env.JWT_SECRET
         );
         return res.status(200).json({
