@@ -1,3 +1,4 @@
+// choice fields
 const USER_STATUSES = {
   ACTIVE: "active",
   INACTIVE: "inactive",
@@ -6,6 +7,7 @@ const USER_STATUSES = {
 
 const COHORT_STATUSES = {
   ACTIVE: "active",
+  INACTIVE: "inactive"
 };
 
 const COMMUNITY_STATUSES = {
