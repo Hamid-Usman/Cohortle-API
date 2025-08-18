@@ -81,6 +81,7 @@ module.exports = function (app) {
           },
           req.user_id
         );
+        console.log('Profile updated for user ID:');
 
         return res.status(200).json({
           error: false,

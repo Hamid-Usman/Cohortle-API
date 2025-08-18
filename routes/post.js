@@ -13,10 +13,10 @@ module.exports = function (app) {
       try {
         const {
           text,
-          media_1,
-          media_2,
-          media_3,
-          media_4,
+          // media_1,
+          // media_2,
+          // media_3,
+          // media_4,
           community_ids,
           mentioned_ids,
           can_reply,

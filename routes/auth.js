@@ -178,6 +178,7 @@ module.exports = function (app) {
       const sdk = new BackendSDK();
       sdk.setTable("users");
       const user = (await sdk.get({ email }))[0];
+console.log('User object:', user);
       if (!user) {
         return res.status(401).json({
           error: true,
@@ -192,7 +193,7 @@ module.exports = function (app) {
       if (!isValid) {
         return res.status(401).json({
           error: true,
-          message: "email and password does not match",
+          message: "password does not match",
         });
       }
 
