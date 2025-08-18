@@ -253,5 +253,46 @@ module.exports = function (app) {
     )
   )
 
+  // delete post
+  app.delete(
+    "v1/api/posts/:post_id",
+    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
+    async function (req, res) { 
+      try {
+        const { post_id } = req.params;
+
+        const validationResult = await ValidationService.validateObject(
+          { post_id: "required|integer" },
+          { post_id }
+        );
+        if (validationResult.error)
+          return res.status(400).json(validationResult);
+
+        const sdk = new BackendSDK();
+        sdk.setTable("posts");
+        const post = await sdk.get({ id: post_id });
+        if (!post || post.length === 0) {
+          return res.status(404).json({
+            error: true,
+            message: "post not found",
+          });
+        }
+        await sdk.delete(post_id);
+        return response.status(200).json({
+          error: false,
+          message: "post deleted successfully",
+        })
+      }
+      catch (err) {
+        console.error(err);
+        res.status(500);
+        res.json({
+          error: true,
+          message: "something went wrong",
+        });
+      }
+    }
+  )
+
   return [];
 };
