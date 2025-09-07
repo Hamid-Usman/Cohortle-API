@@ -199,7 +199,7 @@ module.exports = function (app) {
     } 
   );
 
-  app.post("/v1/post/:post_id/comment", 
+  app.post("/v1/post/:post_id/comments", 
     [UrlMiddleware],
     async function (req, res) {
       try {
@@ -244,6 +244,78 @@ module.exports = function (app) {
         });
         console.log(req.body)
         } 
+    }
+  )
+
+  app.get("/v1/post/:post_id/comments", 
+    [UrlMiddleware],
+    async function (req, res) {
+      try {
+        const { post_id } = req.params;
+        const validationResult = await ValidationService.validateObject(
+          {
+            post_id: "required|integer",
+          },
+          {
+            post_id,
+          })
+          if (validationResult.error) {
+            return res.status(400).json(validationResult)
+          }
+          const sdk = new BackendSDK();
+          sdk.setTable("comments");
+          const comments = await sdk.get({ post_id });
+          return res.status(200).json({
+            error: false,
+            message: "comments fetched successfully",
+            comments,
+          })
+      } catch (err) {
+        console.error(err);
+        res.status(500);
+        res.json({
+          error: true,
+          message: "something went wrong",
+        });
+        console.log(req.body)
+        }
+    }
+  )
+  app.delete("/v1/post/:post_id/comment/:comment_id",
+    [UrlMiddleware],
+    async function (req, res) {
+      try {
+        const { post_id, comment_id } = req.params;
+        const validationResult = await ValidationService.validateObject(
+          {
+            post_id: "required|integer",
+            comment_id: "required|integer",
+          },
+          {
+            post_id,
+            comment_id,
+          })
+          if (validationResult.error) {
+            return res.status(400).json(validationResult)
+          }
+          const sdk = new BackendSDK();
+          sdk.setTable("comments");
+          const deleted = await sdk.delete({post_id}, comment_id);
+          return res.status(200).json({
+            error: false,
+            message: "comment deleted successfully",
+            deleted,
+          })
+      }
+      catch (err) {
+        console.error(err);
+        res.status(500);
+        res.json({
+          error: true,
+          message: "something went wrong",
+        });
+        console.log(req.body)
+      }
     }
   )
 
