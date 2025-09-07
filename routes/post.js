@@ -199,6 +199,52 @@ module.exports = function (app) {
     } 
   );
 
-  
+  app.post("/v1/post/:post_id/comment", 
+    [UrlMiddleware],
+    async function (req, res) {
+      try {
+        const { post_id } = req.params;
+        const {
+          text,
+          media_1
+        } = req.body;
+        const validationResult = await ValidationService.validateObject(
+          {
+            text: "required|string",
+            media_1: "url",
+            post_id: "required|integer",
+          },
+          {
+            text,
+            media_1,
+            post_id,
+          })
+          if (validationResult.error) {
+            return res.status(400).json(validationResult)
+          }
+          const sdk = new BackendSDK();
+          sdk.setTable("comments");
+          const comment_id = await sdk.insert({
+            text,
+            media_1,
+            post_id,
+            commented_by: req.user_id,
+          })
+          return res.status(200).json({
+            error: false,
+            message: "comment added successfully",
+            comment_id,
+          })
+      } catch (err) {
+        console.error(err);
+        res.status(500);
+        res.json({
+          error: true,
+          message: "something went wrong",
+        });
+        console.log(req.body)
+        } 
+    }
+  )
 
 }
