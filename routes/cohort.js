@@ -13,8 +13,8 @@ module.exports = function (app) {
         const {
           name,
           url,
-          owner_type,
-          description,
+          // owner_type,
+          // cohort_goal,
           // annual_revenue,
           // referral_source,
           community_structure,
@@ -22,18 +22,18 @@ module.exports = function (app) {
         const validationResult = await ValidationService.validateObject(
           {
             name: "required|string",
-            // url: "required|string",
+            url: "required|string",
             // owner_type: "required|string",
-            description: "required|string",
+            // cohort_goal: "required|string",
             // annual_revenue: "required|string",
             // referral_source: "required|string",
             community_structure: "string",
           },
           {
             name,
-            // url,
+            url,
             // owner_type,
-            description,
+            // cohort_goal,
             // annual_revenue,
             // referral_source,
             community_structure,
@@ -46,12 +46,12 @@ module.exports = function (app) {
         sdk.setTable("cohorts");
         const cohort_id = await sdk.insert({
           name,
-          // url,
+          url,
           // owner_type,
-          description,
+          // cohort_goal,
           // annual_revenue,
           // referral_source,
-          community_structure,
+          // community_structure,
           cohort_owner: req.user_id,
           status: COHORT_STATUSES.ACTIVE,
         });
@@ -81,10 +81,10 @@ module.exports = function (app) {
         const {
           name,
           url,
-          owner_type,
-          cohort_goal,
-          annual_revenue,
-          referral_source,
+          // owner_type,
+          // cohort_goal,
+          // annual_revenue,
+          // referral_source,
           community_structure,
         } = req.body;
 
@@ -93,19 +93,19 @@ module.exports = function (app) {
             cohort_id: "required|integer",
             name: "string",
             url: "string",
-            owner_type: "string",
-            cohort_goal: "string",
-            annual_revenue: "string",
-            referral_source: "string",
+            // owner_type: "string",
+            // cohort_goal: "string",
+            // annual_revenue: "string",
+            // referral_source: "string",
             community_structure: "string",
           },
           {
             name,
             url,
-            owner_type,
-            cohort_goal,
-            annual_revenue,
-            referral_source,
+            // owner_type,
+            // cohort_goal,
+            // annual_revenue,
+            // referral_source,
             community_structure,
             cohort_id,
           }
@@ -157,37 +157,6 @@ module.exports = function (app) {
     }
   );
 
-  // cohorts user joined
-  app.get(
-    "/v1/api/cohorts/joined",
-    [UrlMiddleware, TokenMiddleware({ role: "learner" })],
-    async function (req, res) {
-      try {
-        const sdk = new BackendSDK();
-        sdk.setTable("cohort_members");
-        const cohorts = await sdk.rawQuery(`
-          SELECT c.id, c.name, c.url, c.owner_type, c.cohort_goal, c.annual_revenue, c.referral_source, c.community_structure
-          FROM cohort_members cm
-          JOIN cohorts c ON cm.cohort_id = c.id
-          WHERE cm.user_id = ${req.user_id} AND cm.status = '${COHORT_LEARNER_STATUS.ACTIVE}'
-        `);
-
-        return res.status(200).json({
-          error: false,
-          message: "cohorts fetched successfully",
-          cohorts,
-        });
-      } catch (err) {
-        console.error(err);
-        res.status(500).json({
-          error: true,
-          message: "something went wrong",
-        });
-      }
-    }
-  )
-
-  // cohort created by user
   app.get(
     "/v1/api/cohorts",
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],

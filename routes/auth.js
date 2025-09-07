@@ -53,8 +53,8 @@ module.exports = function (app) {
           process.env.JWT_SECRET
         );
 
-        const link = `${process.env.FRONTEND_URL}/auth/verify-email?t=${token}`;
-        console.log("verification link", link);
+        const link = token;
+        console.log("verification token", link);
 
         const config = {
           mail_host: process.env.MAIL_HOST,
@@ -178,7 +178,6 @@ module.exports = function (app) {
       const sdk = new BackendSDK();
       sdk.setTable("users");
       const user = (await sdk.get({ email }))[0];
-console.log('User object:', user);
       if (!user) {
         return res.status(401).json({
           error: true,
@@ -193,7 +192,7 @@ console.log('User object:', user);
       if (!isValid) {
         return res.status(401).json({
           error: true,
-          message: "password does not match",
+          message: "email and password does not match",
         });
       }
 

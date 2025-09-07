@@ -141,6 +141,7 @@ module.exports = function (app) {
     async function (req, res) {
       try {
         const { cohort_id, community_id } = req.params;
+
         const validationResult = await ValidationService.validateObject(
           {
             cohort_id: "required|integer",

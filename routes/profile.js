@@ -27,8 +27,11 @@ module.exports = function (app) {
         await sdk.update({ role }, req.user_id);
 
         const token = JwtService.createAccessToken(
-          { user_id: req.user_id, role: role },
-          60 * 60 * 1000, // 1 hour
+          {
+            user_id: req.user_id,
+            role: role,
+          },
+          5 * 60 * 1000,
           process.env.JWT_SECRET
         );
         return res.status(200).json({
@@ -81,11 +84,14 @@ module.exports = function (app) {
           },
           req.user_id
         );
-        console.log('Profile updated for user ID:');
 
         return res.status(200).json({
           error: false,
-          message: "profile updated successfully",
+          message: {
+            "FIRSTNAME": first_name,
+            "LASTNAME": last_name,
+            "USERNAME": username,
+          },
         });
       } catch (err) {
         console.error(err);

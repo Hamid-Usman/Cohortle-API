@@ -13,10 +13,10 @@ module.exports = function (app) {
       try {
         const {
           text,
-          // media_1,
-          // media_2,
-          // media_3,
-          // media_4,
+          media_1,
+          media_2,
+          media_3,
+          media_4,
           community_ids,
           mentioned_ids,
           can_reply,
@@ -56,7 +56,7 @@ module.exports = function (app) {
           media_4,
           community_ids,
           mentioned_ids,
-          posted_by: req.user_id,
+          posted_by: req.user_first_name,
           can_reply,
           status: POST_STATUSES.PUBLISHED,
         });
@@ -79,22 +79,39 @@ module.exports = function (app) {
     }
   );
 
-  // show all posts on feed
-  app.get(
-    "/v1/api/posts",
-    [UrlMiddleware, TokenMiddleware({role: "learner|convener"})],
+  app.get("/v1/api/posts",
+    [UrlMiddleware],
     async function (req, res) {
       try {
         const sdk = new BackendSDK();
         sdk.setTable("posts");
-        const posts = await sdk.get({
-          status: POST_STATUSES.PUBLISHED,
-          // posted_by: req.user_id,
-        });
+        const posts = await sdk.get();
+        const userSdk = new BackendSDK();
+      userSdk.setTable("users");
+
+      const postsWithUsers = await Promise.all(
+        posts.map(async (post) => {
+          const [user] = await userSdk.get({ id: post.posted_by });
+
+          const userData = user
+            ? {
+                first_name: user.first_name,
+                last_name: user.last_name,
+                email: user.email,
+              }
+            : null;
+
+          return {
+            ...post,
+            posted_by: userData,
+          };
+        })
+      );
 
         return res.status(200).json({
           error: false,
-          posts,
+          message: "posts fetched successfully",
+          posts: postsWithUsers,
         });
       } catch (err) {
         console.error(err);
@@ -107,192 +124,81 @@ module.exports = function (app) {
     }
   )
 
-  // get post
-  app.get(
-    "v1/api/posts/:post_id",
-    [TokenMiddleware({ role: "convener" })],
+  app.get("/v1/posts/:post_id", 
+    [UrlMiddleware],
     async function (req, res) {
       try {
         const { post_id } = req.params;
-        const sdk = new BackendSDK();
-        sdk.setTable("posts");
-        const post = await sdk.get({ id: post_id });
-
-        if (!post || post.length === 0) {
-          return res.status(404).json({
-            error: true,
-            message: "post not found",
-          });
-        }
-
-        return res.status(200).json({
-          error: false,
-          post: post[0],
-        });
-      } catch (err) {
-        console.error(err);
-        res.status(500);
-        res.json({
-          error: true,
-          message: "something went wrong",
-        });
-      }
-    }
-  )
-
-  app.put(
-    "/v1/api/posts/:post_id",
-    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
-    async function (req, res) {
-      try {
-        const { post_id } = req.params;
-        const {
-          text,
-          media_1,
-          media_2,
-          media_3,
-          media_4,
-          community_ids,
-          mentioned_ids,
-          can_reply,
-        } = req.body;
-        const validationResult = await ValidationService.validateObject(
-          {
-            text: "required|string",
-            media_1: "url",
-            media_2: "url",
-            media_3: "url",
-            media_4: "url",
-            community_ids: "commaInt",
-            mentioned_ids: "commaInt",
-            can_reply: `required|in:${Object.values(POST_REPLY).join(",")}`,
-          },
-          {
-            text,
-            media_1,
-            media_2,
-            media_3,
-            media_4,
-            community_ids,
-            mentioned_ids,
-            can_reply,
-          }
-        );
-        if (validationResult.error)
-          return res.status(400).json(validationResult);
-
-        const sdk = new BackendSDK();
-        sdk.setTable("posts");
-        const post = await sdk.get({ id: post_id });
-
-        if (!post || post.length === 0) {
-          return res.status(404).json({
-            error: true,
-            message: "post not found",
-          });
-        }
-
-        await sdk.update(
-          {
-            text,
-            media_1,
-            media_2,
-            media_3,
-            media_4,
-            community_ids,
-            mentioned_ids,
-            can_reply,
-          },
-          post_id
-        );
-
-        return res.status(200).json({
-          error: false,
-          message: "post updated successfully",
-        });
-      } catch (err) {
-        console.error(err);
-        res.status(500);
-        res.json({
-          error: true,
-          message: "something went wrong",
-        });
-      }
-    },
-
-    app.delete(
-      "v1/posts/:post_id",
-      [TokenMiddleware({ role: "convener" })],
-      async function (req, res) {
-        try {
-          const { post_id } = req.params;
-          const sdk = new BackendSDK();
-          sdk.setTable("posts");
-          const post = await sdk.get({ id: post_id });
-          if (!post || post.length === 0) {
-            return res.status(404).json({
-              error: true,
-              message: "post not found",
-            });
-          }
-          await sdk.delete(post_id);
-          return res.status(200).json({
-            error: false,
-            message: "post deleted successfully",
-          });
-        }
-        catch (err) {
-          console.log(err)
-          res.status(500);
-          res.join({
-            error: true,
-            message: "Something went wrong..."
-          })
-        }
-      }
-    )
-  )
-
-  // delete post
-  app.delete(
-    "v1/api/posts/:post_id",
-    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
-    async function (req, res) { 
-      try {
-        const { post_id } = req.params;
-
+        console.log(`Fetching post with ID: ${post_id}`);
+        
+        // ✅ Validate post_id
         const validationResult = await ValidationService.validateObject(
           { post_id: "required|integer" },
           { post_id }
         );
-        if (validationResult.error)
+        
+        if (validationResult.error) {
+          console.log("Validation failed:", validationResult);
           return res.status(400).json(validationResult);
-
+        }
+      
+        // ✅ Fetch post
         const sdk = new BackendSDK();
         sdk.setTable("posts");
-        const post = await sdk.get({ id: post_id });
-        if (!post || post.length === 0) {
+        const posts = await sdk.get({ id: post_id });
+
+        // sdk.get might return an array or a single object depending on implementation
+        const post = Array.isArray(posts) ? posts[0] : posts;
+
+        console.log("Found post:", post);
+        
+        if (!post) {
+          console.log(`Post not found for ID: ${post_id}`);
           return res.status(404).json({
             error: true,
-            message: "post not found",
+            message: "Post not found"
           });
         }
-        await sdk.delete(post_id);
-        return response.status(200).json({
+        
+        // ✅ Fetch user details
+        const userSdk = new BackendSDK();
+        userSdk.setTable("users");
+
+        const users = await userSdk.get({ id: post.posted_by });
+        const user = Array.isArray(users) ? users[0] : users;
+
+        const userData = user
+          ? {
+              first_name: user.first_name,
+              last_name: user.last_name,
+              email: user.email,
+            }
+          : null;
+
+        // ✅ Prevent caching
+        res.setHeader("Cache-Control", "no-store");
+        res.setHeader("Pragma", "no-cache");
+
+        // ✅ Final response (single post object)
+        return res.status(200).json({
           error: false,
-          message: "post deleted successfully",
-        })
-      }
-      catch (err) {
-        console.error(err);
-        res.status(500);
-        res.json({
+          message: "Post retrieved successfully",
+          post: {
+            ...post,
+            posted_by: userData,
+          },
+        });
+      
+      } catch (err) {
+        console.error("Error retrieving post:", err);
+        return res.status(500).json({
           error: true,
-          message: "something went wrong",
+          message: "Internal server error"
         });
       }
-    }
-  )
+    } 
+  );
 
-  return [];
-};
+  
+
+}
