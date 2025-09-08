@@ -1,3 +1,4 @@
+const { token } = require("morgan");
 const BackendSDK = require("../core/BackendSDK");
 const TokenMiddleware = require("../middleware/TokenMiddleware");
 const UrlMiddleware = require("../middleware/UrlMiddleware");
@@ -56,7 +57,7 @@ module.exports = function (app) {
           media_4,
           community_ids,
           mentioned_ids,
-          posted_by: req.user_first_name,
+          posted_by: req.user_id,
           can_reply,
           status: POST_STATUSES.PUBLISHED,
         });
@@ -80,7 +81,7 @@ module.exports = function (app) {
   );
 
   app.get("/v1/api/posts",
-    [UrlMiddleware],
+    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
     async function (req, res) {
       try {
         const sdk = new BackendSDK();
@@ -125,7 +126,7 @@ module.exports = function (app) {
   )
 
   app.get("/v1/posts/:post_id", 
-    [UrlMiddleware],
+    [UrlMiddleware,TokenMiddleware({ role: "convener" })],
     async function (req, res) {
       try {
         const { post_id } = req.params;
@@ -200,7 +201,7 @@ module.exports = function (app) {
   );
 
   app.post("/v1/post/:post_id/comments", 
-    [UrlMiddleware],
+    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
     async function (req, res) {
       try {
         const { post_id } = req.params;
@@ -248,7 +249,7 @@ module.exports = function (app) {
   )
 
   app.get("/v1/post/:post_id/comments", 
-    [UrlMiddleware],
+    [UrlMiddleware, TokenMiddleware()],
     async function (req, res) {
       try {
         const { post_id } = req.params;
