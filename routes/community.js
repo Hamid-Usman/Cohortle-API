@@ -16,14 +16,13 @@ module.exports = function (app) {
     "/v1/api/cohorts/:cohort_id/communities",
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],
     async function (req, res) {
-      try {
-        const { cohort_id } = req.params;
+      try {        const { cohort_id } = req.params;
         const { type, sub_type, name, description, thumbnail } = req.body;
         const validationResult = await ValidationService.validateObject(
           {
             cohort_id: "required|integer",
             name: "required|string",
-            type: `required|in:${COMMUNITY_TYPES.join(",")}`,
+            type: `in:${COMMUNITY_TYPES.join(",")}`,
             sub_type: `required|in:${Object.values(COMMUNITY_SUB_TYPES).join(",")}`,
             description: "required|string",
             thumbnail: "url",

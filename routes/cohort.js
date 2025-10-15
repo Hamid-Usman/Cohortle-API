@@ -5,7 +5,7 @@ const ValidationService = require("../services/ValidationService");
 const { COHORT_STATUSES, COHORT_LEARNER_STATUS } = require("../utils/mappings");
 
 module.exports = function (app) {
-  app.post(
+  app.post( 
     "/v1/api/cohorts",
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],
     async function (req, res) {
@@ -13,29 +13,29 @@ module.exports = function (app) {
         const {
           name,
           url,
-          // owner_type,
-          // cohort_goal,
-          // annual_revenue,
-          // referral_source,
+          description,
+          goal,
+          // revenue,
+          referral,
           community_structure,
         } = req.body;
         const validationResult = await ValidationService.validateObject(
           {
             name: "required|string",
             url: "required|string",
-            // owner_type: "required|string",
-            // cohort_goal: "required|string",
-            // annual_revenue: "required|string",
-            // referral_source: "required|string",
+            description: "string",
+            goal: "string",
+            // revenue: "string",
+            referral: "string",
             community_structure: "string",
           },
           {
             name,
             url,
-            // owner_type,
-            // cohort_goal,
-            // annual_revenue,
-            // referral_source,
+            description,
+            goal,
+            // revenue,
+            referral,
             community_structure,
           }
         );
@@ -47,11 +47,11 @@ module.exports = function (app) {
         const cohort_id = await sdk.insert({
           name,
           url,
-          // owner_type,
-          // cohort_goal,
-          // annual_revenue,
-          // referral_source,
-          // community_structure,
+          description,
+          goal,
+          // revenue,
+          referral,
+          community_structure,
           cohort_owner: req.user_id,
           status: COHORT_STATUSES.ACTIVE,
         });
@@ -81,10 +81,10 @@ module.exports = function (app) {
         const {
           name,
           url,
-          // owner_type,
-          // cohort_goal,
-          // annual_revenue,
-          // referral_source,
+          description,
+          goal,
+          revenue,
+          referral,
           community_structure,
         } = req.body;
 
@@ -93,19 +93,19 @@ module.exports = function (app) {
             cohort_id: "required|integer",
             name: "string",
             url: "string",
-            // owner_type: "string",
-            // cohort_goal: "string",
-            // annual_revenue: "string",
-            // referral_source: "string",
+            description: "string",
+            goal: "string",
+            revenue: "string",
+            referral: "string",
             community_structure: "string",
           },
           {
             name,
             url,
-            // owner_type,
-            // cohort_goal,
-            // annual_revenue,
-            // referral_source,
+            description,
+            goal,
+            revenue,
+            referral,
             community_structure,
             cohort_id,
           }
@@ -131,10 +131,10 @@ module.exports = function (app) {
           {
             ...(name !== undefined ? { name } : {}),
             ...(url !== undefined ? { url } : {}),
-            ...(owner_type !== undefined ? { owner_type } : {}),
-            ...(cohort_goal !== undefined ? { cohort_goal } : {}),
-            ...(annual_revenue !== undefined ? { annual_revenue } : {}),
-            ...(referral_source !== undefined ? { referral_source } : {}),
+            ...(description !== undefined ? { description } : {}),
+            ...(goal !== undefined ? { goal } : {}),
+            ...(revenue !== undefined ? { revenue } : {}),
+            ...(referral !== undefined ? { referral } : {}),
             ...(community_structure !== undefined
               ? { community_structure }
               : {}),
@@ -157,9 +157,37 @@ module.exports = function (app) {
     }
   );
 
+  // get convener's cohorts
+  app.get(
+    "/v1/api/cohorts/owner",
+    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
+    async function (req, res) {
+      try {
+        const sdk = new BackendSDK();
+        sdk.setTable("cohorts");
+        const cohorts = await sdk.get({
+          cohort_owner: req.user_id,
+        });
+        return res.status(200).json({
+          error: false,
+          message: "user's cohorts fetched successfully",
+          cohorts,
+        });
+      } catch (err) {
+        console.error(err);
+        res.status(500);
+        res.json({
+          error: true,
+          message: "something went wrong",
+        });
+      }
+    }
+  )
+
+
   app.get(
     "/v1/api/cohorts",
-    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
+    [UrlMiddleware, TokenMiddleware()],
     async function (req, res) {
       try {
         const sdk = new BackendSDK();

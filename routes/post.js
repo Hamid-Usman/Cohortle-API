@@ -80,6 +80,7 @@ module.exports = function (app) {
     }
   );
 
+
   app.get("/v1/api/posts",
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],
     async function (req, res) {
@@ -88,26 +89,26 @@ module.exports = function (app) {
         sdk.setTable("posts");
         const posts = await sdk.get();
         const userSdk = new BackendSDK();
-      userSdk.setTable("users");
+        userSdk.setTable("users");
 
-      const postsWithUsers = await Promise.all(
-        posts.map(async (post) => {
-          const [user] = await userSdk.get({ id: post.posted_by });
+        const postsWithUsers = await Promise.all(
+          posts.map(async (post) => {
+            const [user] = await userSdk.get({ id: post.posted_by });
 
-          const userData = user
-            ? {
-                first_name: user.first_name,
-                last_name: user.last_name,
-                email: user.email,
-              }
-            : null;
+            const userData = user
+              ? {
+                  first_name: user.first_name,
+                  last_name: user.last_name,
+                  email: user.email,
+                }
+              : null;
 
-          return {
-            ...post,
-            posted_by: userData,
-          };
-        })
-      );
+            return {
+              ...post,
+              posted_by: userData,
+            };
+          })
+        );
 
         return res.status(200).json({
           error: false,
@@ -248,40 +249,66 @@ module.exports = function (app) {
     }
   )
 
-  app.get("/v1/post/:post_id/comments", 
-    [UrlMiddleware, TokenMiddleware()],
-    async function (req, res) {
-      try {
-        const { post_id } = req.params;
-        const validationResult = await ValidationService.validateObject(
-          {
-            post_id: "required|integer",
-          },
-          {
-            post_id,
-          })
-          if (validationResult.error) {
-            return res.status(400).json(validationResult)
-          }
-          const sdk = new BackendSDK();
-          sdk.setTable("comments");
-          const comments = await sdk.get({ post_id });
-          return res.status(200).json({
-            error: false,
-            message: "comments fetched successfully",
-            comments,
-          })
-      } catch (err) {
-        console.error(err);
-        res.status(500);
-        res.json({
-          error: true,
-          message: "something went wrong",
-        });
-        console.log(req.body)
-        }
+app.get("/v1/post/:post_id/comments",
+  [UrlMiddleware, TokenMiddleware()],
+  async function (req, res) {
+    try {
+      const { post_id } = req.params;
+
+      // Validate
+      const validationResult = await ValidationService.validateObject(
+        { post_id: "required|integer" },
+        { post_id }
+      );
+      if (validationResult.error) {
+        return res.status(400).json(validationResult);
+      }
+
+      // Fetch comments
+      const sdk = new BackendSDK();
+      sdk.setTable("comments");
+      const comments = await sdk.get({ post_id });
+
+      // Collect user IDs
+      const userIds = [...new Set(comments.map(c => c.commented_by))];
+
+      // Fetch users in one query
+      const userSdk = new BackendSDK();
+      userSdk.setTable("users");
+      const users = [];
+      for (const id of userIds) {
+        const [user] = await userSdk.get({ id });
+        if (user) users.push(user);
+      }
+      const userMap = Object.fromEntries(users.map(u => [u.id, u]));
+
+      // Merge users with comments
+      const commentWithUser = comments.map(comment => ({
+        ...comment,
+        user: userMap[comment.commented_by]
+          ? {
+              first_name: userMap[comment.commented_by].first_name,
+              last_name: userMap[comment.commented_by].last_name,
+            }
+          : null,
+      }));
+      console.log(commentWithUser);
+      return res.status(200).json({
+        error: false,
+        message: "Comments fetched successfully",
+        comments: commentWithUser,
+      });
+
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({
+        error: true,
+        message: "Something went wrong",
+      });
     }
-  )
+  }
+);
+
   app.delete("/v1/post/:post_id/comment/:comment_id",
     [UrlMiddleware],
     async function (req, res) {
