@@ -101,9 +101,11 @@ module.exports = function (app) {
         const sdk = new BackendSDK();
         const communities = await sdk.rawQuery(`
           SELECT 
+            c.cohort_id,
             c.id, 
             c.name, 
-            c.type, 
+            c.type,
+            c.description,
             COUNT(cm.id) AS modules
           FROM 
             communities c
@@ -112,14 +114,16 @@ module.exports = function (app) {
           WHERE 
             c.cohort_id = ${cohort_id}
           GROUP BY 
+            c.cohort_id,
             c.id, 
-            c.name, 
-            c.type;
+            c.name,
+            c.type,
+            c.description;
           `);
 
         return res.status(200).json({
           error: false,
-          message: "communities fetched successfully",
+          message: "communities successfully",
           communities,
         });
       } catch (err) {
