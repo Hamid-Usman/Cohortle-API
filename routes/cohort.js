@@ -22,7 +22,7 @@ module.exports = function (app) {
         const validationResult = await ValidationService.validateObject(
           {
             name: "required|string",
-            url: "required|string",
+            url: "string",
             description: "string",
             goal: "string",
             // revenue: "string",
@@ -212,6 +212,50 @@ module.exports = function (app) {
     }
   );
 
+  // get cohort by id
+  app.get(
+    "/v1/api/cohorts/:cohort_id",
+    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
+    async function (req, res) {
+      try {
+        const { cohort_id } = req.params;
+        const validationResult = await ValidationService.validateObject(
+          {
+            cohort_id: "required|integer",
+          },
+          {
+            cohort_id,
+          }
+        );
+        if (validationResult.error)
+          return res.status(400).json(validationResult);
+        const sdk = new BackendSDK();
+        sdk.setTable("cohorts");
+        const cohort = (
+          await sdk.get({ id: cohort_id })
+        )[0];
+        if (!cohort) {
+          return res.status(404).json({
+            error: true,
+            message: "Cohort does not exist",
+          });
+        }
+        return res.status(200).json({
+          error: false,
+          message: "cohort fetched successfully",
+          cohort,
+        });
+      } catch (err) {
+        console.error(err);
+        res.status(500);
+        res.json({
+          error: true,
+          message: "something went wrong",
+        });
+      }
+    }
+  );
+
   app.delete(
     "/v1/api/cohorts/:cohort_id",
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],
@@ -230,6 +274,12 @@ module.exports = function (app) {
           return res.status(400).json(validationResult);
 
         const sdk = new BackendSDK();
+        
+        // Delete communities first
+        sdk.setTable("communities");
+        await sdk.deleteWhere({ cohort_id });
+
+        // Delete the cohort itself
         sdk.setTable("cohorts");
         await sdk.deleteWhere({ id: cohort_id, cohort_owner: req.user_id });
 
