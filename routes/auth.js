@@ -200,9 +200,9 @@ module.exports = function (app) {
       const token = JwtService.createAccessToken(
         {
           user_id: user.id,
-          role: user.role || 'unassigned', // Default role if null
-          email: user.email,  // Include additional claims
-          status: user.status // Include user status if needed
+          role: user.role || "unassigned", // Default role if null
+          email: user.email, // Include additional claims
+          status: user.status, // Include user status if needed
         },
         24 * 60 * 60 * 1000, // Longer expiry (24 hours)
         process.env.JWT_SECRET
@@ -212,12 +212,13 @@ module.exports = function (app) {
         error: false,
         message: "login successfully",
         token,
-      user: {  // Return complete user data
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        // other relevant fields
-      }
+        user: {
+          // Return complete user data
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          // other relevant fields
+        },
       });
     } catch (err) {
       console.error(err);
