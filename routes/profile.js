@@ -107,17 +107,10 @@ module.exports = function (app) {
           ...(socials && { socials }),
         };
 
-        // Handle image if uploaded
-        if (imageFile) {
-          // Store relative path for frontend
-          updateData.profile_image = `/uploads/${imageFile.filename}`;
-          
-          // Log for debugging
-          console.log('Image uploaded:', {
-            filename: imageFile.filename,
-            path: imageFile.path,
-            size: imageFile.size
-          });
+        // ✅ Save Cloudinary image URL
+        if (imageFile && imageFile.path) {
+          updateData.profile_image = imageFile.path;
+          console.log("Cloudinary upload URL:", imageFile.path);
         }
 
         const sdk = new BackendSDK();
@@ -195,7 +188,7 @@ module.exports = function (app) {
       });
     }
   }
-);
+  );
 
 
 
