@@ -25,10 +25,15 @@
     "nodemailer": "^6.10.1",
     "nodemon": "^3.1.10",
     "sequelize": "^6.37.7",
+<<<<<<< HEAD
     "streamifier": "^0.1.1",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "yamljs": "^0.3.0"
+=======
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
+>>>>>>> 66d33631899d4aa7e05674bf006a0cdc806bcb3d
   },
   "devDependencies": {
     "prettier": "^3.5.3",
