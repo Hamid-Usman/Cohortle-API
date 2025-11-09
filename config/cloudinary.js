@@ -1,41 +1,31 @@
-require("dotenv").config();
-const cloudinary = require("cloudinary").v2;
-const { CloudinaryStorage } = require("multer-storage-cloudinary");
-const multer = require("multer");
+const cloudinary = require('cloudinary').v2;
+const multer = require('multer');
+require('dotenv').config();
+const streamifier = require('streamifier'); // for buffer → stream
 
-// Initialize using the CLOUDINARY_URL from .env
+// Configure Cloudinary
 cloudinary.config({
-  secure: true, // ensure HTTPS delivery
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// Multer Cloudinary storage configuration
-const storage = new CloudinaryStorage({
-  cloudinary,
-  params: async (req, file) => {
-    // Detect whether it's image or video
-    const isVideo = file.mimetype.startsWith("video/");
-    const resourceType = isVideo ? "video" : "image";
-
-    // Choose upload folder based on the route
-    let folder = "general_uploads";
-    const url = req.originalUrl || "";
-
-    if (url.includes("/profile")) folder = "profile_images";
-    else if (url.includes("/lessons")) folder = "lesson_media";
-
-    return {
-      folder,
-      resource_type: resourceType, // useful for video uploads
-      allowed_formats: ["jpg", "jpeg", "png", "webp", "mp4", "webm", "mov"],
-      transformation:
-        resourceType === "image"
-          ? [{ width: 1000, height: 1000, crop: "limit" }]
-          : undefined,
-    };
-  },
-});
-
-// Multer upload middleware
+// Multer in-memory storage
+const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-module.exports = { cloudinary, upload };
+// Helper function to upload buffer to Cloudinary
+function uploadToCloudinary(buffer, folder = 'default') {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve(result.secure_url);
+      }
+    );
+    streamifier.createReadStream(buffer).pipe(stream);
+  });
+}
+
+module.exports = { cloudinary, upload, uploadToCloudinary };

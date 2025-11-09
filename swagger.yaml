@@ -1,0 +1,450 @@
+openapi: 3.0.3
+info:
+  title: Cohort & Community API
+  description: API for managing cohorts, communities, modules, and lessons
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3000/v1/api
+    description: Local server
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Community:
+      type: object
+      properties:
+        id:
+          type: integer
+        cohort_id:
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+        sub_type:
+          type: string
+        description:
+          type: string
+        thumbnail:
+          type: string
+        community_owner:
+          type: integer
+        status:
+          type: string
+        modules:
+          type: array
+          items:
+            $ref: '#/components/schemas/Module'
+
+    Module:
+      type: object
+      properties:
+        id:
+          type: integer
+        community_id:
+          type: integer
+        title:
+          type: string
+        order_number:
+          type: integer
+        status:
+          type: string
+        lessons:
+          type: array
+          items:
+            $ref: '#/components/schemas/Lesson'
+
+    Lesson:
+      type: object
+      properties:
+        id:
+          type: integer
+        module_id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        media:
+          type: string
+        order_number:
+          type: integer
+        status:
+          type: string
+
+security:
+  - BearerAuth: []
+
+paths:
+  # Communities
+  /cohorts/{cohort_id}/communities:
+    post:
+      summary: Create a community
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: cohort_id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, sub_type]
+              properties:
+                name:
+                  type: string
+                type:
+                  type: string
+                sub_type:
+                  type: string
+                description:
+                  type: string
+                thumbnail:
+                  type: string
+      responses:
+        '201':
+          description: Community created
+    get:
+      summary: Get all communities for a cohort
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: cohort_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of communities
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: boolean
+                  message:
+                    type: string
+                  communities:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Community'
+
+  /cohorts/{cohort_id}/communities/{community_id}:
+    get:
+      summary: Get a single community with modules and lessons
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: cohort_id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: community_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Community fetched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Community'
+    put:
+      summary: Update a community
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: cohort_id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: community_id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                type:
+                  type: string
+                sub_type:
+                  type: string
+                description:
+                  type: string
+                status:
+                  type: string
+                thumbnail:
+                  type: string
+    delete:
+      summary: Delete a community
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: cohort_id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: community_id
+          required: true
+          schema:
+            type: integer
+
+  # Modules
+  /communities/{community_id}/modules:
+    post:
+      summary: Create a module in a community
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: community_id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, order_number]
+              properties:
+                title:
+                  type: string
+                order_number:
+                  type: integer
+      responses:
+        '201':
+          description: Module created successfully
+    get:
+      summary: Get all modules for a community
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: community_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Modules fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: boolean
+                  message:
+                    type: string
+                  modules:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Module'
+
+  /communities/{community_id}/modules/{module_id}:
+    get:
+      summary: Get a single module
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: community_id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: module_id
+          required: true
+          schema:
+            type: integer
+    put:
+      summary: Update a module
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: community_id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: module_id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                status:
+                  type: string
+                order_number:
+                  type: integer
+    delete:
+      summary: Delete a module
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: community_id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: module_id
+          required: true
+          schema:
+            type: integer
+
+  # Lessons
+  /modules/{module_id}/lessons:
+    post:
+      summary: Create a lesson (with media upload)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: module_id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [name, order_number, media]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                order_number:
+                  type: integer
+                media:
+                  type: string
+                  format: binary
+    get:
+      summary: Get all lessons for a module
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: module_id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lessons fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: boolean
+                  message:
+                    type: string
+                  lessons:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Lesson'
+
+  /modules/{module_id}/lessons/{lesson_id}:
+    get:
+      summary: Get a single lesson
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: module_id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: lesson_id
+          required: true
+          schema:
+            type: integer
+    put:
+      summary: Update a lesson
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: module_id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: lesson_id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                media:
+                  type: string
+                order_number:
+                  type: integer
+                status:
+                  type: string
+    delete:
+      summary: Delete a lesson
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: module_id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: lesson_id
+          required: true
+          schema:
+            type: integer

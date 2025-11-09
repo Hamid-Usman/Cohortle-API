@@ -4,36 +4,30 @@ const logger = require("morgan");
 const cors = require("cors");
 const swaggerUi = require("swagger-ui-express");
 const swaggerJsdoc = require("swagger-jsdoc");
-const mainRouter = require("./routes/auth"); // Load auth routes
+
+const authRoutes = require("./routes/auth");
+const cohortRoutes = require("./routes/cohort");
+const communityRoutes = require("./routes/community");
 
 const app = express();
 
-// --- Middleware ---
+// Middleware
 app.use(cors({ origin: "*", credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(logger("dev"));
 app.use(express.static(path.join(__dirname, "public")));
 
-// --- Swagger Configuration ---
+// Swagger
 const swaggerOptions = {
   definition: {
-    openapi: "3.0.0",
+    openapi: "3.0.3",
     info: {
-      title: "Cohortly API",
+      title: "Cohortle API",
       version: "1.0.0",
-      description: "API documentation for Cohortly backend",
-      contact: {
-        name: "Cohortly Dev Team",
-        email: "support@cohortly.com",
-      },
+      description: "API documentation for Cohortle platform",
     },
-    servers: [
-      {
-        url: process.env.RENDER_EXTERNAL_URL || "http://localhost:3000",
-        description: "Current server",
-      },
-    ],
+    servers: [{ url: "http://localhost:18123/v1/api" }],
     components: {
       securitySchemes: {
         bearerAuth: {
@@ -44,29 +38,27 @@ const swaggerOptions = {
       },
     },
   },
-  apis: ["./routes/*.js"], // Scan all route files for Swagger docs
+  apis: ["./routes/*.js"],
 };
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerJsdoc(swaggerOptions)));
 
-const swaggerDocs = swaggerJsdoc(swaggerOptions);
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+// Routes
+authRoutes(app);
+cohortRoutes(app);
+communityRoutes(app);
 
-// --- Routes ---
-mainRouter(app);
-
-// --- Fallback routes ---
+// Fallback
 app.get("/home", (req, res) => res.sendFile(path.join(__dirname, "index.html")));
 app.get("/", (req, res) => res.redirect("/home"));
 
-// --- Error handling for missing uploads ---
+// Error handling
 app.use("/uploads", (err, req, res, next) => {
-  if (err.code === "ENOENT") {
-    return res.status(404).json({ error: true, message: "Image not found" });
-  }
+  if (err.code === "ENOENT") return res.status(404).json({ error: true, message: "Image not found" });
   next(err);
 });
 
-// --- Start server ---
-const PORT = process.env.PORT || 3000;
+// Start server
+const PORT = process.env.PORT || 18123;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
 
 module.exports = app;

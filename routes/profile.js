@@ -52,23 +52,16 @@ module.exports = function (app) {
   );
   app.put(
     "/v1/api/profile",
-    [
-      upload.single("image"),
-      UrlMiddleware,
-      TokenMiddleware({ role: "learner|convener" }),
-    ],
-    async function (req, res) {
+    [upload.single("image"), UrlMiddleware, TokenMiddleware({ role: "learner|convener" })],
+    async (req, res) => {
       try {
-        const { 
-          first_name, 
-          last_name, 
-          username, 
-          password, 
-          location, 
-          socials,
-        } = req.body;
-        
-        const imageFile = req.file;
+        const { first_name, last_name, username, password, location, socials } = req.body;
+
+        let profileImageUrl;
+        if (req.file) {
+          profileImageUrl = await uploadToCloudinary(req.file.buffer, 'profiles');
+          console.log("Cloudinary upload URL:", profileImageUrl);
+        }
 
         const validationResult = await ValidationService.validateObject(
           {
@@ -81,23 +74,12 @@ module.exports = function (app) {
           },
           { first_name, last_name, username, password, location, socials }
         );
-        
-        if (validationResult.error)
-          return res.status(400).json(validationResult);
+
+        if (validationResult.error) return res.status(400).json(validationResult);
 
         let hashedPassword;
-        if (password) {
-          hashedPassword = await PasswordService.hash(password);
-        }
-        // const token = JwtService.createAccessToken(
-        //   {
-        //     user_id: req.user_id,
-        //   },
-        //   5 * 60 * 1000,
-        //   process.env.JWT_SECRET
-        // );
+        if (password) hashedPassword = await PasswordService.hash(password);
 
-        // Build update payload
         const updateData = {
           ...(first_name && { first_name }),
           ...(last_name && { last_name }),
@@ -105,13 +87,8 @@ module.exports = function (app) {
           ...(hashedPassword && { password: hashedPassword }),
           ...(location && { location }),
           ...(socials && { socials }),
+          ...(profileImageUrl && { profile_image: profileImageUrl }),
         };
-
-        // ✅ Save Cloudinary image URL
-        if (imageFile && imageFile.path) {
-          updateData.profile_image = imageFile.path;
-          console.log("Cloudinary upload URL:", imageFile.path);
-        }
 
         const sdk = new BackendSDK();
         sdk.setTable("users");
@@ -120,32 +97,21 @@ module.exports = function (app) {
         return res.status(200).json({
           error: false,
           message: {
-            "FIRSTNAME": first_name,
-            "LASTNAME": last_name,
-            "USERNAME": username,
-            "LOCATION": location,
-            "SOCIALS": socials,
-            "PROFILE_IMAGE": updateData.profile_image || null,
-            // "TOKEN": token,
+            FIRSTNAME: first_name,
+            LASTNAME: last_name,
+            USERNAME: username,
+            LOCATION: location,
+            SOCIALS: socials,
+            PROFILE_IMAGE: profileImageUrl || null,
           },
         });
       } catch (err) {
-        console.error('Profile update error:', err);
-        
-        // Clean up uploaded file if there was an error
-        if (req.file && req.file.path) {
-          fs.unlink(req.file.path, (unlinkErr) => {
-            if (unlinkErr) console.error('Error deleting uploaded file:', unlinkErr);
-          });
-        }
-        
-        res.status(500).json({
-          error: true,
-          message: "Something went wrong",
-        });
+        console.error("Profile update error:", err);
+        res.status(500).json({ error: true, message: "Something went wrong" });
       }
     }
   );
+
   app.get(
   "/v1/api/profile",
   [UrlMiddleware, TokenMiddleware({ role: "learner|convener" })],

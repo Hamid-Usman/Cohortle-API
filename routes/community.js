@@ -3,7 +3,8 @@ const TokenMiddleware = require("../middleware/TokenMiddleware");
 const UrlMiddleware = require("../middleware/UrlMiddleware");
 const ValidationService = require("../services/ValidationService");
 
-const { upload } = require("../config/cloudinary");
+const { upload } = require('../config/cloudinary');
+
 const {
   COMMUNITY_STATUSES,
   COMMUNITY_TYPES,
@@ -578,52 +579,37 @@ module.exports = function (app) {
 
   app.post(
     "/v1/api/modules/:module_id/lessons",
-    [
-      UrlMiddleware,
-      TokenMiddleware({ role: "convener" }),
-      upload.single("media"), // ✅ handles media upload to Cloudinary
-    ],
-    async function (req, res) {
+    [UrlMiddleware, TokenMiddleware({ role: "convener" }), upload.single("media")],
+    async (req, res) => {
       try {
         const { module_id } = req.params;
         const { name, description, order_number } = req.body;
-        const mediaFile = req.file;
 
-        // Basic validation (media no longer required as URL)
+        let mediaUrl = req.body.media; // fallback if no file uploaded
+        if (req.file) {
+          mediaUrl = await uploadToCloudinary(req.file.buffer, 'lessons');
+        }
+
         const validationResult = await ValidationService.validateObject(
           {
             module_id: "required|integer",
             name: "required|string",
             description: "string",
             order_number: "required|integer",
+            media: "url|optional",
           },
-          {
-            module_id,
-            name,
-            description,
-            order_number,
-          }
+          { module_id, name, description, order_number, media: mediaUrl }
         );
 
-        if (validationResult.error)
-          return res.status(400).json(validationResult);
-
-        // ✅ Ensure a file was uploaded
-        if (!mediaFile || !mediaFile.path) {
-          return res.status(400).json({
-            error: true,
-            message: "Media file (image or video) is required",
-          });
-        }
+        if (validationResult.error) return res.status(400).json(validationResult);
 
         const sdk = new BackendSDK();
         sdk.setTable("module_lessons");
-
         const lesson_id = await sdk.insert({
           module_id,
           name,
           description,
-          media: mediaFile.path, // ✅ Cloudinary URL
+          media: mediaUrl,
           order_number,
           status: LESSON_STATUSES.DRAFT,
         });
@@ -632,14 +618,11 @@ module.exports = function (app) {
           error: false,
           message: "Lesson created successfully",
           lesson_id,
-          media_url: mediaFile.path, // ✅ Cloudinary delivery URL
+          media_url: mediaUrl,
         });
       } catch (err) {
-        console.error("Lesson creation error:", err);
-        res.status(500).json({
-          error: true,
-          message: "Something went wrong",
-        });
+        console.error(err);
+        res.status(500).json({ error: true, message: "Something went wrong" });
       }
     }
   );
@@ -735,11 +718,18 @@ module.exports = function (app) {
   // edit lesson
   app.put(
     "/v1/api/modules/:module_id/lessons/:lesson_id",
-    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
+    [UrlMiddleware, TokenMiddleware({ role: "convener" }), upload.single("media")],
     async function (req, res) {
       try {
         const { module_id, lesson_id } = req.params;
-        const { name, description, media, status, order_number } = req.body;
+        const { name, description, status, order_number } = req.body;
+
+        // Optional media: uploaded file or URL in body
+        let mediaUrl = req.body.media;
+        if (req.file) {
+          // Upload to Cloudinary
+          mediaUrl = await uploadToCloudinary(req.file.buffer, 'lessons');
+        }
 
         const validationResult = await ValidationService.validateObject(
           {
@@ -747,7 +737,7 @@ module.exports = function (app) {
             lesson_id: "required|integer",
             name: "string",
             description: "string",
-            media: "url",
+            media: "url|optional",
             status: `in:${Object.values(LESSON_STATUSES).join(",")}`,
             order_number: "integer",
           },
@@ -756,13 +746,13 @@ module.exports = function (app) {
             lesson_id,
             name,
             description,
-            media,
+            media: mediaUrl,
             status,
             order_number,
           }
         );
-        if (validationResult.error)
-          return res.status(400).json(validationResult);
+
+        if (validationResult.error) return res.status(400).json(validationResult);
 
         const sdk = new BackendSDK();
         sdk.setTable("module_lessons");
@@ -771,7 +761,7 @@ module.exports = function (app) {
           {
             ...(name !== undefined ? { name } : {}),
             ...(description !== undefined ? { description } : {}),
-            ...(media !== undefined ? { media } : {}),
+            ...(mediaUrl !== undefined ? { media: mediaUrl } : {}),
             ...(order_number !== undefined ? { order_number } : {}),
             ...(status !== undefined ? { status } : {}),
           },
@@ -780,14 +770,14 @@ module.exports = function (app) {
 
         return res.status(200).json({
           error: false,
-          message: "lesson updated successfully",
+          message: "Lesson updated successfully",
+          media_url: mediaUrl, // return updated media URL
         });
       } catch (err) {
-        console.error(err);
-        res.status(500);
-        res.json({
+        console.error("Lesson update error:", err);
+        res.status(500).json({
           error: true,
-          message: "something went wrong",
+          message: "Something went wrong",
         });
       }
     }
