@@ -3,7 +3,7 @@ const TokenMiddleware = require("../middleware/TokenMiddleware");
 const UrlMiddleware = require("../middleware/UrlMiddleware");
 const ValidationService = require("../services/ValidationService");
 
-const { upload } = require('../config/cloudinary');
+const { upload, uploadToCloudinary } = require('../config/cloudinary');
 
 const {
   COMMUNITY_STATUSES,
@@ -15,6 +15,68 @@ const {
 
 module.exports = function (app) {
   // create community
+  /**
+   * @swagger
+   * /cohorts/{cohort_id}/communities:
+   *   post:
+   *     summary: Create a community
+   *     tags: [Communities]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: cohort_id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - name
+   *               - sub_type
+   *             properties:
+   *               name:
+   *                 type: string
+   *               type:
+   *                 type: string
+   *               sub_type:
+   *                 type: string
+   *               description:
+   *                 type: string
+   *               thumbnail:
+   *                 type: string
+   *     responses:
+   *       '201':
+   *         description: Community created successfully
+   *   get:
+   *     summary: Get all communities for a cohort
+   *     tags: [Communities]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: cohort_id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       '200':
+   *         description: List of communities
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 communities:
+   *                   type: array
+   *                   items:
+   *                     $ref: '#/components/schemas/Community'
+   */
+
   app.post(
     "/v1/api/cohorts/:cohort_id/communities",
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],
@@ -82,26 +144,46 @@ module.exports = function (app) {
     }
   );
 
-  // get communities
+  // get communities for both users
   app.get(
     "/v1/api/cohorts/:cohort_id/communities",
-    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
+    [UrlMiddleware, TokenMiddleware({ role: "learner|convener" })],
     async function (req, res) {
       try {
         const { cohort_id } = req.params;
+        const { user_id, role } = req; // now available from TokenMiddleware
 
+        // 🔹 Validate input
         const validationResult = await ValidationService.validateObject(
-          {
-            cohort_id: "required|integer",
-          },
-          {
-            cohort_id,
-          }
+          { cohort_id: "required|integer" },
+          { cohort_id }
         );
         if (validationResult.error)
-          return res.status(400).json(validationResult);
+          return res.status(400).json({
+            error: true,
+            message: "Invalid request data",
+            details: validationResult,
+          });
 
         const sdk = new BackendSDK();
+
+        // 🔹 If learner, check they belong to this cohort
+        if (role === "learner") {
+          sdk.setTable("cohort_learners");
+          const membership = await sdk.get({
+            cohort_id,
+            learner_id: user_id,
+          });
+
+          if (!membership.length) {
+            return res.status(403).json({
+              error: true,
+              message: "Access denied — you are not part of this cohort.",
+            });
+          }
+        }
+
+        // 🔹 Fetch communities
         const communities = await sdk.rawQuery(`
           SELECT 
             c.cohort_id,
@@ -122,19 +204,18 @@ module.exports = function (app) {
             c.name,
             c.type,
             c.description;
-          `);
+        `);
 
         return res.status(200).json({
           error: false,
-          message: "communities successfully",
+          message: "Communities fetched successfully",
           communities,
         });
       } catch (err) {
         console.error(err);
-        res.status(500);
-        res.json({
+        res.status(500).json({
           error: true,
-          message: "something went wrong",
+          message: "Something went wrong",
         });
       }
     }
@@ -143,10 +224,11 @@ module.exports = function (app) {
   // get community
   app.get(
     "/v1/api/cohorts/:cohort_id/communities/:community_id",
-    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
+    [UrlMiddleware, TokenMiddleware({ role: "convener|learner" })],
     async function (req, res) {
       try {
         const { cohort_id, community_id } = req.params;
+        const { user_id, role } = req;
 
         const validationResult = await ValidationService.validateObject(
           {
@@ -162,6 +244,19 @@ module.exports = function (app) {
           return res.status(400).json(validationResult);
 
         const sdk = new BackendSDK();
+        
+        // 🔹 If learner, ensure they belong to this cohort
+        if (role === "learner") {
+          sdk.setTable("cohort_learners");
+          const membership = await sdk.get({ cohort_id, learner_id: user_id });
+
+          if (!membership.length) {
+            return res.status(403).json({
+              error: true,
+              message: "Access denied — you are not part of this cohort.",
+            });
+          }
+        }
         sdk.setTable("communities");
 
         const community = (await sdk.get({ cohort_id, id: community_id }))[0];

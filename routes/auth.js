@@ -8,98 +8,127 @@ const { USER_STATUSES } = require("../utils/mappings");
 const { UniqueConstraintError } = require("sequelize");
 
 module.exports = function (app) {
-  /**
-   * @swagger
-   * /v1/api/auth/register-email:
-   *   post:
-   *     summary: Register a new user with email
-   *     tags: [Auth]
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             required:
-   *               - email
-   *             properties:
-   *               email:
-   *                 type: string
-   *                 example: user@example.com
-   *     responses:
-   *       200:
-   *         description: Email sent successfully
-   *       400:
-   *         description: Invalid input or email already used
-   */
-  app.post("/v1/api/auth/register-email", [UrlMiddleware], async function (req, res) {
-    try {
-      const { email } = req.body;
-      const validationResult = await ValidationService.validateObject(
-        { email: "required|email" },
-        { email }
-      );
-      if (validationResult.error) return res.status(400).json(validationResult);
+/**
+ * @swagger
+ * /v1/api/auth/register-email:
+ *   post:
+ *     summary: Register a new user with email and password
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: user@example.com
+ *               password:
+ *                 type: string
+ *                 example: StrongPassword123
+ *     responses:
+ *       200:
+ *         description: Registration successful, verification email sent
+ *       400:
+ *         description: Invalid input or email already used
+ */
+app.post("/v1/api/auth/register-email", [UrlMiddleware], async function (req, res) {
+  try {
+    const { email, password } = req.body;
 
-      const sdk = new BackendSDK();
+    // validate email and password
+    const validationResult = await ValidationService.validateObject(
+      {
+        email: "required|email",
+        password: "required|string"
+      },
+      { email, password }
+    );
+    if (validationResult.error) return res.status(400).json(validationResult);
 
-      sdk.setTable("users");
-      const newUserId = await sdk.insert({
-        email,
-        status: USER_STATUSES.INACTIVE,
-      });
+    const sdk = new BackendSDK();
 
-      sdk.setTable("preferences");
-      await sdk.insert({
-        email_updates: 1,
-        new_posts: 1,
-        new_course_content: 1,
-        new_polls: 1,
-        mentions: 0,
-        replies_on_post: 0,
-        user_id: newUserId,
-      });
-
-      const token = JwtService.createAccessToken(
-        { user_id: newUserId },
-        50 * 10000 * 600,
-        process.env.JWT_SECRET
-      );
-
-      const link = token;
-      console.log("verification token", link);
-
-      const config = {
-        mail_host: process.env.MAIL_HOST,
-        mail_port: process.env.MAIL_PORT,
-        mail_user: process.env.MAIL_USER,
-        mail_pass: process.env.MAIL_PASS,
-      };
-      MailService.initialize(config);
-
-      await MailService.send({
-        from: process.env.MAIL_FROM,
-        to: email,
-        html: MailService.VERIFICATION_EMAIL.replace("{{{link}}}", link),
-        subject: "Confirm your email to get started with Cohortly",
-      });
-
-      return res.status(200).json({
-        error: false,
-        message: "Email sent successfully",
-        link,
-      });
-    } catch (err) {
-      if (err instanceof UniqueConstraintError && err.errors[0].path === "email") {
-        return res.status(400).json({
-          error: true,
-          message: "Email already in use",
-        });
-      }
-      console.error(err);
-      res.status(500).json({ error: true, message: "something went wrong" });
+    // check if email already exists
+    sdk.setTable("users");
+    const existing = await sdk.get({ email });
+    if (existing.length > 0) {
+      return res.status(400).json({ error: true, message: "Email already in use" });
     }
-  });
+
+    // hash password
+    const hashedPassword = await PasswordService.hash(password);
+
+    // create new user
+    const newUserId = await sdk.insert({
+      email,
+      password: hashedPassword,
+      role: null,
+      status: USER_STATUSES.INACTIVE,
+    });
+
+    // create default preferences
+    sdk.setTable("preferences");
+    await sdk.insert({
+      email_updates: 1,
+      new_posts: 1,
+      new_course_content: 1,
+      new_polls: 1,
+      mentions: 0,
+      replies_on_post: 0,
+      user_id: newUserId,
+    });
+
+    // create verification token
+    const token = JwtService.createAccessToken(
+      { user_id: newUserId,
+        role: null,
+        email
+       },
+      50 * 10000 * 600,
+      process.env.JWT_SECRET
+    );
+
+    // const link = `${process.env.FRONTEND_URL}/auth/verify?t=${token}`;
+    // console.log("verification link", link);
+
+    // // send verification email
+    // const config = {
+    //   mail_host: process.env.MAIL_HOST,
+    //   mail_port: process.env.MAIL_PORT,
+    //   mail_user: process.env.MAIL_USER,
+    //   mail_pass: process.env.MAIL_PASS,
+    // };
+    // MailService.initialize(config);
+
+    // await MailService.send({
+    //   from: process.env.MAIL_FROM,
+    //   to: email,
+    //   html: MailService.VERIFICATION_EMAIL.replace("{{{link}}}", link),
+    //   subject: "Confirm your email to get started with Cohortly",
+    // });
+
+    return res.status(200).json({
+      error: false,
+      message: "User registered successfully. Verification email sent.",
+      // link,
+      token
+    });
+  } catch (err) {
+    if (err instanceof UniqueConstraintError && err.errors[0].path === "email") {
+      return res.status(400).json({
+        error: true,
+        message: "Email already in use",
+      });
+    }
+    console.error(err);
+    res.status(500).json({ error: true, message: "Something went wrong" });
+  }
+});
+
 
   /**
    * @swagger

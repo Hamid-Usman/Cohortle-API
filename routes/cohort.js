@@ -4,7 +4,65 @@ const UrlMiddleware = require("../middleware/UrlMiddleware");
 const ValidationService = require("../services/ValidationService");
 const { COHORT_STATUSES, COHORT_LEARNER_STATUS } = require("../utils/mappings");
 
+/**
+ * @swagger
+ * tags:
+ *   name: Cohorts
+ *   description: API endpoints for managing cohorts
+ */
 module.exports = function (app) {
+  /**
+   * @swagger
+   * /v1/api/cohorts:
+   *   post:
+   *     summary: Create a new cohort
+   *     tags: [Cohorts]
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               name:
+   *                 type: string
+   *                 example: "Cohort A"
+   *               url:
+   *                 type: string
+   *                 example: "cohort-a"
+   *               description:
+   *                 type: string
+   *                 example: "A sample cohort"
+   *               goal:
+   *                 type: string
+   *                 example: "Learn Node.js"
+   *               referral:
+   *                 type: string
+   *                 example: "friend"
+   *               community_structure:
+   *                 type: string
+   *                 example: "flat"
+   *     responses:
+   *       200:
+   *         description: Cohort created successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 error:
+   *                   type: boolean
+   *                 message:
+   *                   type: string
+   *                 cohort_id:
+   *                   type: integer
+   *       400:
+   *         description: Validation error
+   *       500:
+   *         description: Server error
+   */
   app.post( 
     "/v1/api/cohorts",
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],
@@ -72,6 +130,51 @@ module.exports = function (app) {
     }
   );
 
+  /**
+   * @swagger
+   * /v1/api/cohorts/{cohort_id}:
+   *   put:
+   *     summary: Update a cohort
+   *     tags: [Cohorts]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: cohort_id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               name:
+   *                 type: string
+   *               url:
+   *                 type: string
+   *               description:
+   *                 type: string
+   *               goal:
+   *                 type: string
+   *               revenue:
+   *                 type: string
+   *               referral:
+   *                 type: string
+   *               community_structure:
+   *                 type: string
+   *     responses:
+   *       200:
+   *         description: Cohort updated successfully
+   *       400:
+   *         description: Validation error
+   *       404:
+   *         description: Cohort not found
+   *       500:
+   *         description: Server error
+   */
   app.put(
     "/v1/api/cohorts/:cohort_id",
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],
@@ -157,6 +260,22 @@ module.exports = function (app) {
     }
   );
 
+  
+  /**
+   * @swagger
+   * /v1/api/cohorts/owner:
+   *   get:
+   *     summary: Get all cohorts of a convener
+   *     tags: [Cohorts]
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: List of cohorts
+   *       500:
+   *         description: Server error
+   */
+
   // get convener's cohorts
   app.get(
     "/v1/api/cohorts/owner",
@@ -184,7 +303,20 @@ module.exports = function (app) {
     }
   )
 
-
+  /**
+   *    * @swagger
+   * /v1/api/cohorts:
+   *   get:
+   *     summary: Get all cohorts accessible by the user
+   *     tags: [Cohorts]
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: List of cohorts
+   *       500:
+   *         description: Server error
+   */
   app.get(
     "/v1/api/cohorts",
     [UrlMiddleware, TokenMiddleware()],
@@ -212,6 +344,30 @@ module.exports = function (app) {
     }
   );
 
+    /**
+   * @swagger
+   * /v1/api/cohorts/{cohort_id}:
+   *   get:
+   *     summary: Get a single cohort by ID
+   *     tags: [Cohorts]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: cohort_id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       200:
+   *         description: Cohort fetched successfully
+   *       400:
+   *         description: Validation error
+   *       404:
+   *         description: Cohort not found
+   *       500:
+   *         description: Server error
+   */
   // get cohort by id
   app.get(
     "/v1/api/cohorts/:cohort_id",
@@ -255,6 +411,30 @@ module.exports = function (app) {
       }
     }
   );
+
+    /**
+   * @swagger
+   * /v1/api/cohorts/{cohort_id}:
+   *   delete:
+   *     summary: Delete a cohort
+   *     tags: [Cohorts]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: cohort_id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       200:
+   *         description: Cohort deleted successfully
+   *       400:
+   *         description: Validation error
+   *       500:
+   *         description: Server error
+   */
+
 
   app.delete(
     "/v1/api/cohorts/:cohort_id",

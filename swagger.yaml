@@ -1,93 +1,411 @@
 openapi: 3.0.3
 info:
-  title: Cohort & Community API
-  description: API for managing cohorts, communities, modules, and lessons
+  title: Cohortle API
   version: 1.0.0
+  description: API documentation for Cohortle platform
 
 servers:
-  - url: http://localhost:3000/v1/api
-    description: Local server
-
-components:
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-
-  schemas:
-    Community:
-      type: object
-      properties:
-        id:
-          type: integer
-        cohort_id:
-          type: integer
-        name:
-          type: string
-        type:
-          type: string
-        sub_type:
-          type: string
-        description:
-          type: string
-        thumbnail:
-          type: string
-        community_owner:
-          type: integer
-        status:
-          type: string
-        modules:
-          type: array
-          items:
-            $ref: '#/components/schemas/Module'
-
-    Module:
-      type: object
-      properties:
-        id:
-          type: integer
-        community_id:
-          type: integer
-        title:
-          type: string
-        order_number:
-          type: integer
-        status:
-          type: string
-        lessons:
-          type: array
-          items:
-            $ref: '#/components/schemas/Lesson'
-
-    Lesson:
-      type: object
-      properties:
-        id:
-          type: integer
-        module_id:
-          type: integer
-        name:
-          type: string
-        description:
-          type: string
-        media:
-          type: string
-        order_number:
-          type: integer
-        status:
-          type: string
-
-security:
-  - BearerAuth: []
+  - url: https://cohortle-api.onrender.com/v1/api
+    description: Production server
 
 paths:
+  # ============================
+  # Auth Routes
+  # ============================
+  /auth/register-email:
+    post:
+      summary: Register a new user with email
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  example: user@example.com
+      responses:
+        '200':
+          description: Email sent successfully
+        '400':
+          description: Invalid input or email already used
+        '500':
+          description: Internal server error
+
+  /auth/verify-email:
+    post:
+      summary: Verify user email using token
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [verify_token]
+              properties:
+                verify_token:
+                  type: string
+                  example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+      responses:
+        '200':
+          description: Email verified successfully
+        '401':
+          description: Invalid or expired token
+        '500':
+          description: Internal server error
+
+  /auth/login:
+    post:
+      summary: Log in user with email and password
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  example: user@example.com
+                password:
+                  type: string
+                  example: StrongPassword123
+      responses:
+        '200':
+          description: Login successful
+        '401':
+          description: Invalid credentials
+        '500':
+          description: Internal server error
+
+  /auth/forgot-password:
+    post:
+      summary: Request a password reset link
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  example: user@example.com
+      responses:
+        '200':
+          description: Password reset link sent
+        '401':
+          description: Email not registered
+        '500':
+          description: Internal server error
+
+  /auth/reset-password:
+    post:
+      summary: Reset password using token
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password:
+                  type: string
+                  example: NewStrongPassword123
+      responses:
+        '200':
+          description: Password reset successfully
+        '401':
+          description: Unauthorized or invalid token
+        '500':
+          description: Internal server error
+
+  # ============================
+  # Cohorts
+  # ============================
+  /cohorts:
+    post:
+      summary: Create a new cohort
+      tags: [Cohorts]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                url:
+                  type: string
+                description:
+                  type: string
+                goal:
+                  type: string
+                referral:
+                  type: string
+                community_structure:
+                  type: string
+      responses:
+        '200':
+          description: Cohort created successfully
+        '400':
+          description: Validation error
+        '500':
+          description: Internal server error
+
+    get:
+      summary: Get all cohorts owned by the authenticated user
+      tags: [Cohorts]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of cohorts fetched successfully
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+
+  /cohorts/owner:
+    get:
+      summary: Get all cohorts owned by the convener
+      tags: [Cohorts]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User's cohorts fetched successfully
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+
+  /cohorts/{cohort_id}:
+    parameters:
+      - name: cohort_id
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      summary: Get a single cohort by ID
+      tags: [Cohorts]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Cohort fetched successfully
+        '404':
+          description: Cohort not found
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+
+    put:
+      summary: Update a cohort by ID
+      tags: [Cohorts]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                url:
+                  type: string
+                description:
+                  type: string
+                goal:
+                  type: string
+                revenue:
+                  type: string
+                referral:
+                  type: string
+                community_structure:
+                  type: string
+      responses:
+        '200':
+          description: Cohort updated successfully
+        '400':
+          description: Validation error
+        '404':
+          description: Cohort not found
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+
+    delete:
+      summary: Delete a cohort by ID
+      tags: [Cohorts]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Cohort deleted successfully
+        '400':
+          description: Validation error
+        '404':
+          description: Cohort not found
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+
+  # ============================
+  # Cohort Learners
+  # ============================
+  /cohorts/{cohort_id}/learners:
+    post:
+      summary: Add learners to a cohort
+      tags: [Cohort Learners]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cohort_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [learners]
+              properties:
+                learners:
+                  type: array
+                  items:
+                    type: integer
+      responses:
+        '200':
+          description: Learners added successfully
+        '400':
+          description: Validation error
+        '404':
+          description: Cohort not found
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+
+    get:
+      summary: Get all learners in a cohort
+      tags: [Cohort Learners]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cohort_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Learners fetched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  learners:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Learner'
+        '404':
+          description: Cohort not found
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+
+  /cohorts/{cohort_id}/learners/{learner_id}:
+    patch:
+      summary: Restrict a learner in a cohort
+      tags: [Cohort Learners]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cohort_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: learner_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Learner restricted successfully
+        '400':
+          description: Validation error
+        '404':
+          description: Cohort or learner not found
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+
+    delete:
+      summary: Remove a learner from a cohort
+      tags: [Cohort Learners]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cohort_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: learner_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Learner removed successfully
+        '400':
+          description: Validation error
+        '404':
+          description: Cohort or learner not found
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+
+  # ============================
   # Communities
+  # ============================
   /cohorts/{cohort_id}/communities:
     post:
       summary: Create a community
+      tags: [Communities]
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - in: path
           name: cohort_id
@@ -114,11 +432,12 @@ paths:
                   type: string
       responses:
         '201':
-          description: Community created
+          description: Community created successfully
     get:
       summary: Get all communities for a cohort
+      tags: [Communities]
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - in: path
           name: cohort_id
@@ -133,10 +452,6 @@ paths:
               schema:
                 type: object
                 properties:
-                  error:
-                    type: boolean
-                  message:
-                    type: string
                   communities:
                     type: array
                     items:
@@ -145,8 +460,9 @@ paths:
   /cohorts/{cohort_id}/communities/{community_id}:
     get:
       summary: Get a single community with modules and lessons
+      tags: [Communities]
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - in: path
           name: cohort_id
@@ -160,15 +476,16 @@ paths:
             type: integer
       responses:
         '200':
-          description: Community fetched
+          description: Community fetched successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Community'
     put:
       summary: Update a community
+      tags: [Communities]
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - in: path
           name: cohort_id
@@ -201,8 +518,9 @@ paths:
                   type: string
     delete:
       summary: Delete a community
+      tags: [Communities]
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - in: path
           name: cohort_id
@@ -215,12 +533,15 @@ paths:
           schema:
             type: integer
 
+  # ============================
   # Modules
+  # ============================
   /communities/{community_id}/modules:
     post:
       summary: Create a module in a community
+      tags: [Modules]
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - in: path
           name: community_id
@@ -244,8 +565,9 @@ paths:
           description: Module created successfully
     get:
       summary: Get all modules for a community
+      tags: [Modules]
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - in: path
           name: community_id
@@ -260,10 +582,6 @@ paths:
               schema:
                 type: object
                 properties:
-                  error:
-                    type: boolean
-                  message:
-                    type: string
                   modules:
                     type: array
                     items:
@@ -272,8 +590,9 @@ paths:
   /communities/{community_id}/modules/{module_id}:
     get:
       summary: Get a single module
+      tags: [Modules]
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - in: path
           name: community_id
@@ -287,8 +606,9 @@ paths:
             type: integer
     put:
       summary: Update a module
+      tags: [Modules]
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - in: path
           name: community_id
@@ -315,8 +635,9 @@ paths:
                   type: integer
     delete:
       summary: Delete a module
+      tags: [Modules]
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - in: path
           name: community_id
@@ -329,12 +650,15 @@ paths:
           schema:
             type: integer
 
+  # ============================
   # Lessons
+  # ============================
   /modules/{module_id}/lessons:
     post:
       summary: Create a lesson (with media upload)
+      tags: [Lessons]
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - in: path
           name: module_id
@@ -360,8 +684,9 @@ paths:
                   format: binary
     get:
       summary: Get all lessons for a module
+      tags: [Lessons]
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - in: path
           name: module_id
@@ -376,10 +701,6 @@ paths:
               schema:
                 type: object
                 properties:
-                  error:
-                    type: boolean
-                  message:
-                    type: string
                   lessons:
                     type: array
                     items:
@@ -388,8 +709,9 @@ paths:
   /modules/{module_id}/lessons/{lesson_id}:
     get:
       summary: Get a single lesson
+      tags: [Lessons]
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - in: path
           name: module_id
@@ -403,8 +725,9 @@ paths:
             type: integer
     put:
       summary: Update a lesson
+      tags: [Lessons]
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - in: path
           name: module_id
@@ -435,8 +758,9 @@ paths:
                   type: string
     delete:
       summary: Delete a lesson
+      tags: [Lessons]
       security:
-        - BearerAuth: []
+        - bearerAuth: []
       parameters:
         - in: path
           name: module_id
@@ -448,3 +772,39 @@ paths:
           required: true
           schema:
             type: integer
+
+# ============================
+# COMPONENTS
+# ============================
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Learner:
+      type: object
+      properties:
+        id:
+          type: integer
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+        status:
+          type: string
+          enum: [active, restricted, removed]
+        member_id:
+          type: integer
+
+    Community:
+      type: object
+      properties:
+        id:
+          type: integer

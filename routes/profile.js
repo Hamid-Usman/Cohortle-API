@@ -8,6 +8,36 @@ const { USER_STATUSES } = require("../utils/mappings");
 const upload = require("../middleware/uploadMiddleware");
 
 module.exports = function (app) {
+  /**
+   * @swagger
+   * /v1/api/profile/set-role:
+   *   patch:
+   *     summary: Set user role after registration
+   *     description: Allows a newly registered user to set their role (either learner or convener). Generates a short-lived access token.
+   *     tags: [Profile]
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - role
+   *             properties:
+   *               role:
+   *                 type: string
+   *                 enum: [learner, convener]
+   *                 example: learner
+   *     responses:
+   *       200:
+   *         description: Role set successfully
+   *       400:
+   *         description: Validation error
+   *       500:
+   *         description: Server error
+   */
   app.patch(
     "/v1/api/profile/set-role",
     [UrlMiddleware, TokenMiddleware({ allowNull: true })],
@@ -50,6 +80,52 @@ module.exports = function (app) {
       }
     }
   );
+
+  /**
+   * @swagger
+   * /v1/api/profile:
+   *   put:
+   *     summary: Update user profile
+   *     description: Allows a user to update their profile details including name, username, password, and profile image.
+   *     tags: [Profile]
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: false
+   *       content:
+   *         multipart/form-data:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               first_name:
+   *                 type: string
+   *                 example: John
+   *               last_name:
+   *                 type: string
+   *                 example: Doe
+   *               username:
+   *                 type: string
+   *                 example: johndoe123
+   *               password:
+   *                 type: string
+   *                 example: newpassword123
+   *               location:
+   *                 type: string
+   *                 example: Lagos, Nigeria
+   *               socials:
+   *                 type: string
+   *                 example: "@johndoe"
+   *               image:
+   *                 type: string
+   *                 format: binary
+   *     responses:
+   *       200:
+   *         description: Profile updated successfully
+   *       400:
+   *         description: Validation error
+   *       500:
+   *         description: Server error
+   */
   app.put(
     "/v1/api/profile",
     [upload.single("image"), UrlMiddleware, TokenMiddleware({ role: "learner|convener" })],
@@ -112,6 +188,23 @@ module.exports = function (app) {
     }
   );
 
+  /**
+   * @swagger
+   * /v1/api/profile:
+   *   get:
+   *     summary: Get user profile
+   *     description: Fetches the currently authenticated user's profile information.
+   *     tags: [Profile]
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: Profile retrieved successfully
+   *       404:
+   *         description: User not found
+   *       500:
+   *         description: Server error
+   */
   app.get(
   "/v1/api/profile",
   [UrlMiddleware, TokenMiddleware({ role: "learner|convener" })],
