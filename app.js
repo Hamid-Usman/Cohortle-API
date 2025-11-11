@@ -62,7 +62,7 @@ app.get("/docs", (req, res) => {
     <!DOCTYPE html>
     <html>
       <head>
-        <title>Cohortle API Docs</title>
+        <title>Cohortle API Docs 0.0.1 </title>
         <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
       </head>
       <body>
