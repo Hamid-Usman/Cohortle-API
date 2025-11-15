@@ -17,7 +17,7 @@ module.exports = function (app) {
   // create community
   /**
    * @swagger
-   * /cohorts/{cohort_id}/communities:
+   * /v1/api/cohorts/{cohort_id}/communities:
    *   post:
    *     summary: Create a community
    *     tags: [Communities]
@@ -76,6 +76,354 @@ module.exports = function (app) {
    *                   items:
    *                     $ref: '#/components/schemas/Community'
    */
+
+  /**
+ * @swagger
+ * /v1/api/communities/{community_id}/modules:
+ *   post:
+ *     summary: Create a module in a community
+ *     description: Only conveners can create modules. Returns the ID of the created module.
+ *     tags: [Modules]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: community_id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the community
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - title
+ *               - order_number
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 description: Title of the module
+ *               order_number:
+ *                 type: integer
+ *                 description: Module order in the community
+ *     responses:
+ *       '201':
+ *         description: Module created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 module_id:
+ *                   type: integer
+ *                 message:
+ *                   type: string
+ */
+
+/**
+ * @swagger
+ * /v1/api/communities/{community_id}/modules:
+ *   get:
+ *     summary: Get all modules for a community
+ *     description: Fetches all modules in a given community.
+ *     tags: [Modules]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: community_id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       '200':
+ *         description: Modules fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 modules:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Module'
+ */
+
+/**
+ * @swagger
+ * /v1/api/communities/{community_id}/modules/{module_id}:
+ *   get:
+ *     summary: Get a module by ID
+ *     tags: [Modules]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: community_id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - name: module_id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       '200':
+ *         description: Module fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Module'
+ */
+
+/**
+ * @swagger
+ * /v1/api/communities/{community_id}/modules/{module_id}:
+ *   put:
+ *     summary: Update a module
+ *     description: Only the module owner can update module details.
+ *     tags: [Modules]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: community_id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - name: module_id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               order_number:
+ *                 type: integer
+ *               status:
+ *                 type: string
+ *     responses:
+ *       '200':
+ *         description: Module updated successfully
+ */
+
+/**
+ * @swagger
+ * /v1/api/communities/{community_id}/modules/{module_id}:
+ *   delete:
+ *     summary: Delete a module
+ *     description: Only the module owner can delete a module.
+ *     tags: [Modules]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: community_id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - name: module_id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       '200':
+ *         description: Module deleted successfully
+ */
+
+
+  // LEARNER
+
+  /**
+ * @swagger
+ * /v1/api/modules/{module_id}/lessons:
+ *   post:
+ *     summary: Create a lesson in a module
+ *     description: Only conveners can create lessons. Media upload is optional.
+ *     tags: [Lessons]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: module_id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - order_number
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               order_number:
+ *                 type: integer
+ *               media:
+ *                 type: string
+ *                 format: binary
+ *                 description: Optional lesson media file
+ *     responses:
+ *       '201':
+ *         description: Lesson created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 lesson_id:
+ *                   type: integer
+ *                 media_url:
+ *                   type: string
+ *                 message:
+ *                   type: string
+ */
+
+/**
+ * @swagger
+ * /v1/api/modules/{module_id}/lessons:
+ *   get:
+ *     summary: Get all lessons in a module
+ *     tags: [Lessons]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: module_id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       '200':
+ *         description: Lessons fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 lessons:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Lesson'
+ */
+
+/**
+ * @swagger
+ * /v1/api/modules/{module_id}/lessons/{lesson_id}:
+ *   get:
+ *     summary: Get a lesson by ID
+ *     tags: [Lessons]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: module_id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - name: lesson_id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       '200':
+ *         description: Lesson fetched successfully
+ */
+
+/**
+ * @swagger
+ * /v1/api/modules/{module_id}/lessons/{lesson_id}:
+ *   put:
+ *     summary: Update a lesson
+ *     description: Update lesson details. Media upload is optional.
+ *     tags: [Lessons]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: module_id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - name: lesson_id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               order_number:
+ *                 type: integer
+ *               status:
+ *                 type: string
+ *               media:
+ *                 type: string
+ *                 format: binary
+ *                 description: Optional lesson media file
+ *     responses:
+ *       '200':
+ *         description: Lesson updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 media_url:
+ *                   type: string
+ *                 message:
+ *                   type: string
+ */
+
+/**
+ * @swagger
+ * /v1/api/modules/{module_id}/lessons/{lesson_id}:
+ *   delete:
+ *     summary: Delete a lesson
+ *     description: Only the lesson owner can delete the lesson.
+ *     tags: [Lessons]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: module_id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - name: lesson_id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       '200':
+ *         description: Lesson deleted successfully
+ */
 
   app.post(
     "/v1/api/cohorts/:cohort_id/communities",
@@ -144,10 +492,10 @@ module.exports = function (app) {
     }
   );
 
-  // get communities for both users
+   // get communities for both users
   app.get(
     "/v1/api/cohorts/:cohort_id/communities",
-    [UrlMiddleware, TokenMiddleware({ role: "learner|convener" })],
+    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
     async function (req, res) {
       try {
         const { cohort_id } = req.params;
@@ -221,6 +569,34 @@ module.exports = function (app) {
     }
   );
 
+  /**
+   * @swagger
+   * /v1/api/cohorts/{cohort_id}/communities/{community_id}:
+   *   get:
+   *     summary: Get a community by ID
+   *     description: Fetch a single community with its modules and lessons.
+   *     tags: [Communities]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - name: cohort_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *       - name: community_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       '200':
+   *         description: Community fetched successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Community'
+   */
   // get community
   app.get(
     "/v1/api/cohorts/:cohort_id/communities/:community_id",
@@ -299,6 +675,48 @@ module.exports = function (app) {
     }
   );
 
+  /**
+   * @swagger
+   * /v1/api/cohorts/{cohort_id}/communities/{community_id}:
+   *   put:
+   *     summary: Edit a community
+   *     description: Update a community's data. Only the community owner can edit.
+   *     tags: [Communities]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - name: cohort_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *       - name: community_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     requestBody:
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               name:
+   *                 type: string
+   *               type:
+   *                 type: string
+   *               sub_type:
+   *                 type: string
+   *               description:
+   *                 type: string
+   *               status:
+   *                 type: string
+   *               thumbnail:
+   *                 type: string
+   *     responses:
+   *       '200':
+   *         description: Community updated successfully
+   */
   // edit community
   app.put(
     "/v1/api/cohorts/:cohort_id/communities/:community_id",
@@ -379,6 +797,30 @@ module.exports = function (app) {
     }
   );
 
+  /**
+   * @swagger
+   * /v1/api/cohorts/{cohort_id}/communities/{community_id}:
+   *   delete:
+   *     summary: Delete a community
+   *     description: Delete a community. Only the owner (convener) can delete.
+   *     tags: [Communities]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - name: cohort_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *       - name: community_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       '200':
+   *         description: Community deleted successfully
+   */
   // delete community
   app.delete(
     "/v1/api/cohorts/:cohort_id/communities/:community_id",
@@ -475,7 +917,7 @@ module.exports = function (app) {
   // Get modules for a community
   app.get(
     "/v1/api/communities/:community_id/modules",
-    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
+    [UrlMiddleware, TokenMiddleware({ role: "convener|learner" })],
     async function (req, res) {
       try {
         const { community_id } = req.params;
@@ -530,7 +972,7 @@ module.exports = function (app) {
 
   // get module
   app.get("/v1/api/communities/:community_id/modules/:module_id",
-    [UrlMiddleware, TokenMiddleware({"role": "convener"})],
+    [UrlMiddleware, TokenMiddleware({"role": "convener|learner"})],
     async function (req, res) {
       try {
         const { community_id, module_id } = req.params;

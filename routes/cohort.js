@@ -29,9 +29,6 @@ module.exports = function (app) {
    *               name:
    *                 type: string
    *                 example: "Cohort A"
-   *               url:
-   *                 type: string
-   *                 example: "cohort-a"
    *               description:
    *                 type: string
    *                 example: "A sample cohort"
@@ -63,14 +60,13 @@ module.exports = function (app) {
    *       500:
    *         description: Server error
    */
-  app.post( 
+  app.post(                                                                                                                                                                           
     "/v1/api/cohorts",
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],
     async function (req, res) {
       try {
         const {
           name,
-          url,
           description,
           goal,
           // revenue,
@@ -80,7 +76,6 @@ module.exports = function (app) {
         const validationResult = await ValidationService.validateObject(
           {
             name: "required|string",
-            url: "string",
             description: "string",
             goal: "string",
             // revenue: "string",
@@ -101,10 +96,15 @@ module.exports = function (app) {
           return res.status(400).json(validationResult);
 
         const sdk = new BackendSDK();
+        let code;
         sdk.setTable("cohorts");
+
+        do {
+          code = generateJoinCode();  // e.g. ABC123XY
+        } while (await sdk.exists({ url: code }));
         const cohort_id = await sdk.insert({
           name,
-          url,
+          url: code,
           description,
           goal,
           // revenue,
@@ -114,7 +114,7 @@ module.exports = function (app) {
           status: COHORT_STATUSES.ACTIVE,
         });
 
-        return res.status(200).json({
+        return res.status(201).json({
           error: false,
           message: "cohort created successfully",
           cohort_id,
@@ -260,7 +260,6 @@ module.exports = function (app) {
     }
   );
 
-  
   /**
    * @swagger
    * /v1/api/cohorts/owner:
@@ -434,8 +433,6 @@ module.exports = function (app) {
    *       500:
    *         description: Server error
    */
-
-
   app.delete(
     "/v1/api/cohorts/:cohort_id",
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],
@@ -478,67 +475,111 @@ module.exports = function (app) {
     }
   );
 
+  /**
+   * @swagger
+   * /v1/api/cohorts/join/{join_code}:
+   *   post:
+   *     summary: Join a cohort via join code
+   *     tags: [Cohorts]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: join_code
+   *         required: true
+   *         schema:
+   *           type: string
+   *     responses:
+   *       200:
+   *         description: Joined cohort successfully
+   *       400:
+   *         description: User already a member
+   *       404:
+   *         description: Invalid join code
+   *       500:
+   *         description: Server error
+   */
+  // join cohort via join code
   app.post(
-    "/v1/api/cohorts/:cohort_id/learners",
-    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
+    "/v1/api/cohorts/join/:join_code",
+    [UrlMiddleware, TokenMiddleware()], // must be logged in
     async function (req, res) {
       try {
-        const { cohort_id } = req.params;
-        const { learners } = req.body;
-
-        const validationResult = await ValidationService.validateObject(
-          {
-            cohort_id: "required|integer",
-            learners: "required|array",
-            "learners.*": "required|integer",
-          },
-          {
-            cohort_id,
-            learners,
-          }
-        );
-        if (validationResult.error)
-          return res.status(400).json(validationResult);
+        const { join_code } = req.params;
+        const user_id = req.user_id;
 
         const sdk = new BackendSDK();
+
+        // Get cohort by url code
         sdk.setTable("cohorts");
-        const cohort = (
-          await sdk.get({ id: cohort_id, cohort_owner: req.user_id })
-        )[0];
+        const cohort = (await sdk.get({ url: join_code }))[0];
 
         if (!cohort) {
           return res.status(404).json({
             error: true,
-            message: "cohort not found",
+            message: "Invalid or expired join link",
           });
         }
 
+        // check if user already joined
         sdk.setTable("cohort_members");
-        await Promise.all(
-          learners.map((user_id) =>
-            sdk.insert({
-              cohort_id,
-              user_id,
-              status: COHORT_LEARNER_STATUS.ACTIVE,
-            })
-          )
-        );
+        const existing = await sdk.get({
+          cohort_id: cohort.id,
+          user_id,
+        });
 
-        return res.status(200).json({
+        if (existing.length > 0) {
+          return res.status(400).json({
+            error: true,
+            message: "You are already a member of this cohort",
+          });
+        }
+
+        // join cohort
+        await sdk.insert({
+          cohort_id: cohort.id,
+          user_id,
+          status: COHORT_LEARNER_STATUS.ACTIVE,
+        });
+
+        return res.json({
           error: false,
-          message: "learners added successfully",
+          message: "You have joined the cohort successfully",
+          cohort_id: cohort.id,
         });
       } catch (err) {
         console.error(err);
-        res.status(500);
-        res.json({
+        return res.status(500).json({
           error: true,
-          message: "something went wrong",
+          message: "Something went wrong",
         });
       }
     }
   );
 
+   /**
+   * @swagger
+   * /v1/api/cohorts/{cohort_id}/learners:
+   *   get:
+   *     summary: Get all learners in a cohort
+   *     tags: [Cohorts]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: cohort_id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       200:
+   *         description: List of learners
+   *       400:
+   *         description: Validation error
+   *       500:
+   *         description: Server error
+   */
+  // get learners in a cohort
   app.get(
     "/v1/api/cohorts/:cohort_id/learners",
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],
@@ -589,6 +630,78 @@ module.exports = function (app) {
     }
   );
 
+    /**
+   * @swagger
+   * /v1/api/cohorts/learner:
+   *   get:
+   *     summary: Get all cohorts the learner is part of
+   *     tags: [Cohorts]
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: List of cohorts
+   *       500:
+   *         description: Server error
+   */
+  // get cohort learner is in
+  app.get(
+    "/v1/api/cohorts/learner",
+    [UrlMiddleware, TokenMiddleware({ role: "learner" })],
+    async function (req, res) {
+      try {
+        const sdk = new BackendSDK();
+        const cohorts = await sdk.rawQuery(`
+          SELECT 
+            c.*
+          FROM cohort_members cm
+          JOIN cohorts c ON c.id = cm.cohort_id
+          WHERE cm.user_id = ${req.user_id}
+          `);
+        return res.status(200).json({
+          error: false,
+          message: "cohorts fetched successfully",
+          cohorts,
+        });
+      } catch (err) {
+        console.error(err);
+        res.status(500);
+        res.json({
+          error: true,
+          message: "something went wrong",
+        });
+      }
+    }
+  );
+/**
+   * @swagger
+   * /v1/api/cohorts/{cohort_id}/learners/{learner_id}:
+   *   patch:
+   *     summary: Restrict a learner in a cohort
+   *     tags: [Cohorts]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: cohort_id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *       - in: path
+   *         name: learner_id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       200:
+   *         description: Learner restricted successfully
+   *       400:
+   *         description: Validation error
+   *       404:
+   *         description: Cohort not found
+   *       500:
+   *         description: Server error
+   */
   app.patch(
     "/v1/api/cohorts/:cohort_id/learners/:learner_id",
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],
@@ -642,7 +755,35 @@ module.exports = function (app) {
       }
     }
   );
-
+  /**
+   * @swagger
+   * /v1/api/cohorts/{cohort_id}/learners/{learner_id}:
+   *   delete:
+   *     summary: Remove a learner from a cohort
+   *     tags: [Cohorts]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: cohort_id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *       - in: path
+   *         name: learner_id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       200:
+   *         description: Learner removed successfully
+   *       400:
+   *         description: Validation error
+   *       404:
+   *         description: Cohort not found
+   *       500:
+   *         description: Server error
+   */
   app.delete(
     "/v1/api/cohorts/:cohort_id/learners/:learner_id",
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],
@@ -694,6 +835,8 @@ module.exports = function (app) {
     }
   );
 
+
+  // get all users except self
   app.get(
     "/v1/api/users",
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],
