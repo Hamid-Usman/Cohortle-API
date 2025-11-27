@@ -32,7 +32,7 @@ const swaggerOptions = {
       version: "1.0.0",
       description: "API documentation for Cohortle platform",
     },
-    servers: [{ url: "http://localhost:18123" }],
+    servers: [{ url: "http://localhost:3048" }],
     components: {
       securitySchemes: {
         bearerAuth: {
@@ -83,21 +83,24 @@ profileRoutes(app);
 // =====================
 // Fallback Routes
 // =====================
-app.get("/home", (req, res) => res.sendFile(path.join(__dirname, "index.html")));
+app.get("/home", (req, res) =>
+  res.sendFile(path.join(__dirname, "index.html")),
+);
 app.get("/", (req, res) => res.redirect("/home"));
 
 // =====================
 // Error Handling
 // =====================
 app.use("/uploads", (err, req, res, next) => {
-  if (err.code === "ENOENT") return res.status(404).json({ error: true, message: "Image not found" });
+  if (err.code === "ENOENT")
+    return res.status(404).json({ error: true, message: "Image not found" });
   next(err);
 });
 
 // =====================
 // Start Server
 // =====================
-const PORT = process.env.PORT || 18123;
-app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+const PORT = process.env.PORT;
+// app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
 
 module.exports = app;

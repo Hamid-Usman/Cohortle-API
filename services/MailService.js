@@ -46,7 +46,7 @@ Team Cohortly</p>
     config,
     pool = false,
     maxMessages = 100,
-    maxConnections = 5
+    maxConnections = 5,
   ) {
     this.transport = nodemailer.createTransport({
       pool,
@@ -83,7 +83,7 @@ Team Cohortly</p>
       const value = payload[key];
       mailSubject = mailSubject.replace(
         new RegExp("{{{" + key + "}}}", "g"),
-        value
+        value,
       );
     }
 

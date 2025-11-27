@@ -53,6 +53,6 @@ module.exports = (sequelize) => {
     {
       tableName: "lesson_progress",
       timestamps: false, // disable automatic timestamps since you defined them manually
-    }
+    },
   );
 };

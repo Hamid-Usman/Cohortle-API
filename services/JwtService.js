@@ -13,7 +13,7 @@ const jwksClient = require("jwks-rsa");
 module.exports = {
   createAccessToken: function (payload, expireIn, secret) {
     return jwt.sign(payload, secret, {
-      expiresIn: Number(expireIn),
+      expiresIn: Number(expireIn) / 1000,
       algorithm: "HS256",
     });
   },
@@ -28,22 +28,6 @@ module.exports = {
     try {
       const decoded = jwt.verify(token, key, options);
       if (decoded) {
-        if (options.allowNull) {
-          return decoded;
-        }
-        for (const key of Object.keys(options)) {
-          if (key == "role" && decoded.role.split(",").length > 1) {
-            const user_roles = decoded.role.split(",");
-            const roles = options[key].split("|");
-            if (
-              user_roles.filter((value) => roles.includes(value)).length == 0
-            ) {
-              return false;
-            }
-          } else if (!options[key].split("|").includes(decoded[key])) {
-            return false;
-          }
-        }
         return decoded;
       }
     } catch (err) {
@@ -67,7 +51,7 @@ module.exports = {
         let r = (d + Math.random() * 16) % 16 | 0;
         d = Math.floor(d / 16);
         return (c == "x" ? r : (r & 0x7) | 0x8).toString(16);
-      }
+      },
     );
 
     return (uuid.toUpperCase() + "-" + time.toString()).substring(0, length);
@@ -80,7 +64,7 @@ module.exports = {
         let r = (d + Math.random() * 16) % 16 | 0;
         d = Math.floor(d / 16);
         return (c == "x" ? r : (r & 0x7) | 0x8).toString(16);
-      }
+      },
     );
     return uuid.toUpperCase();
   },

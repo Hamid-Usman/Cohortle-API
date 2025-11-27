@@ -12,7 +12,7 @@ class MySqlAdapterSetting {
       user,
       password,
       hostname,
-      port
+      port,
     );
   }
 
@@ -23,7 +23,7 @@ class MySqlAdapterSetting {
         this.user,
         this.password,
         this.hostname,
-        this.port
+        this.port,
       );
     }
     return this._connection;
@@ -35,7 +35,7 @@ function createSequelizeConnection(
   user,
   password,
   hostname,
-  port
+  port,
 ) {
   return new Sequelize(databaseName, user, password, {
     dialect: "mysql",
@@ -66,7 +66,7 @@ function createInstance() {
     process.env.DB_USER,
     process.env.DB_PASSWORD,
     process.env.DB_HOSTNAME,
-    process.env.DB_PORT
+    process.env.DB_PORT,
   );
   return classObj;
 }

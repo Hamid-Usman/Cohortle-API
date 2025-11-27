@@ -6,13 +6,11 @@ module.exports = function (app) {
     try {
       const sdk = new BackendSDK();
       const result = (await sdk.rawQuery("SELECT NOW() AS db_time"))[0];
-      return res
-        .status(200)
-        .json({
-          error: false,
-          message: "Ping successful",
-          db_time: result.db_time,
-        });
+      return res.status(200).json({
+        error: false,
+        message: "Ping successful",
+        db_time: result.db_time,
+      });
     } catch (err) {
       console.error(err);
       res.status(500);

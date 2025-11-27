@@ -30,7 +30,7 @@ module.exports = function (app) {
           message: "something went wrong",
         });
       }
-    }
+    },
   );
 
   return [];

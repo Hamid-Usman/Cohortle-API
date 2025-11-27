@@ -1,7 +1,7 @@
-const cloudinary = require('cloudinary').v2;
-const multer = require('multer');
-require('dotenv').config();
-const streamifier = require('streamifier'); // for buffer → stream
+const cloudinary = require("cloudinary").v2;
+const multer = require("multer");
+require("dotenv").config();
+const streamifier = require("streamifier"); // for buffer → stream
 
 // Configure Cloudinary
 cloudinary.config({
@@ -15,15 +15,25 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 // Helper function to upload buffer to Cloudinary
-function uploadToCloudinary(buffer, folder = 'default') {
+function uploadToCloudinary(buffer, folder = "lessons") {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
-      { folder },
+      {
+        folder,
+        resource_type: "video", // THIS IS THE KEY LINE
+        // Optional: better video settings
+        // eager: [{ streaming_profile: "hd", format: "m3u8" }], // for HLS
+        // allowed_formats: ["mp4", "webm", "mov"],
+      },
       (error, result) => {
-        if (error) return reject(error);
+        if (error) {
+          console.error("Cloudinary upload failed:", error);
+          return reject(error);
+        }
         resolve(result.secure_url);
-      }
+      },
     );
+
     streamifier.createReadStream(buffer).pipe(stream);
   });
 }

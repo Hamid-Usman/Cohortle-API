@@ -1,8 +1,8 @@
-'use strict';
+"use strict";
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('lesson_progress', {
+    await queryInterface.createTable("lesson_progress", {
       id: {
         type: Sequelize.INTEGER,
         primaryKey: true,
@@ -11,23 +11,23 @@ module.exports = {
       learner_id: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        references: { model: 'learners', key: 'id' },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE',
+        references: { model: "users", key: "id" },
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       lesson_id: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        references: { model: 'module_lessons', key: 'id' },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE',
+        references: { model: "module_lessons", key: "id" },
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       cohort_id: {
         type: Sequelize.INTEGER,
         allowNull: false,
-        references: { model: 'cohorts', key: 'id' },
-        onUpdate: 'CASCADE',
-        onDelete: 'CASCADE',
+        references: { model: "cohorts", key: "id" },
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       completed: {
         type: Sequelize.BOOLEAN,
@@ -49,6 +49,6 @@ module.exports = {
   },
 
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('lesson_progress');
+    await queryInterface.dropTable("lesson_progress");
   },
 };

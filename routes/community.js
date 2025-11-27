@@ -3,7 +3,7 @@ const TokenMiddleware = require("../middleware/TokenMiddleware");
 const UrlMiddleware = require("../middleware/UrlMiddleware");
 const ValidationService = require("../services/ValidationService");
 
-const { upload, uploadToCloudinary } = require('../config/cloudinary');
+const { upload, uploadToCloudinary } = require("../config/cloudinary");
 
 const {
   COMMUNITY_STATUSES,
@@ -78,358 +78,358 @@ module.exports = function (app) {
    */
 
   /**
- * @swagger
- * /v1/api/communities/{community_id}/modules:
- *   post:
- *     summary: Create a module in a community
- *     description: Only conveners can create modules. Returns the ID of the created module.
- *     tags: [Modules]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - name: community_id
- *         in: path
- *         required: true
- *         schema:
- *           type: integer
- *         description: ID of the community
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - title
- *               - order_number
- *             properties:
- *               title:
- *                 type: string
- *                 description: Title of the module
- *               order_number:
- *                 type: integer
- *                 description: Module order in the community
- *     responses:
- *       '201':
- *         description: Module created successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 module_id:
- *                   type: integer
- *                 message:
- *                   type: string
- */
+   * @swagger
+   * /v1/api/communities/{community_id}/modules:
+   *   post:
+   *     summary: Create a module in a community
+   *     description: Only conveners can create modules. Returns the ID of the created module.
+   *     tags: [Modules]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - name: community_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: ID of the community
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - title
+   *               - order_number
+   *             properties:
+   *               title:
+   *                 type: string
+   *                 description: Title of the module
+   *               order_number:
+   *                 type: integer
+   *                 description: Module order in the community
+   *     responses:
+   *       '201':
+   *         description: Module created successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 module_id:
+   *                   type: integer
+   *                 message:
+   *                   type: string
+   */
 
-/**
- * @swagger
- * /v1/api/communities/{community_id}/modules:
- *   get:
- *     summary: Get all modules for a community
- *     description: Fetches all modules in a given community.
- *     tags: [Modules]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - name: community_id
- *         in: path
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       '200':
- *         description: Modules fetched successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 modules:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Module'
- */
+  /**
+   * @swagger
+   * /v1/api/communities/{community_id}/modules:
+   *   get:
+   *     summary: Get all modules for a community
+   *     description: Fetches all modules in a given community.
+   *     tags: [Modules]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - name: community_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       '200':
+   *         description: Modules fetched successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 modules:
+   *                   type: array
+   *                   items:
+   *                     $ref: '#/components/schemas/Module'
+   */
 
-/**
- * @swagger
- * /v1/api/communities/{community_id}/modules/{module_id}:
- *   get:
- *     summary: Get a module by ID
- *     tags: [Modules]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - name: community_id
- *         in: path
- *         required: true
- *         schema:
- *           type: integer
- *       - name: module_id
- *         in: path
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       '200':
- *         description: Module fetched successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Module'
- */
+  /**
+   * @swagger
+   * /v1/api/communities/{community_id}/modules/{module_id}:
+   *   get:
+   *     summary: Get a module by ID
+   *     tags: [Modules]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - name: community_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *       - name: module_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       '200':
+   *         description: Module fetched successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Module'
+   */
 
-/**
- * @swagger
- * /v1/api/communities/{community_id}/modules/{module_id}:
- *   put:
- *     summary: Update a module
- *     description: Only the module owner can update module details.
- *     tags: [Modules]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - name: community_id
- *         in: path
- *         required: true
- *         schema:
- *           type: integer
- *       - name: module_id
- *         in: path
- *         required: true
- *         schema:
- *           type: integer
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               title:
- *                 type: string
- *               order_number:
- *                 type: integer
- *               status:
- *                 type: string
- *     responses:
- *       '200':
- *         description: Module updated successfully
- */
+  /**
+   * @swagger
+   * /v1/api/communities/{community_id}/modules/{module_id}:
+   *   put:
+   *     summary: Update a module
+   *     description: Only the module owner can update module details.
+   *     tags: [Modules]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - name: community_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *       - name: module_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     requestBody:
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               title:
+   *                 type: string
+   *               order_number:
+   *                 type: integer
+   *               status:
+   *                 type: string
+   *     responses:
+   *       '200':
+   *         description: Module updated successfully
+   */
 
-/**
- * @swagger
- * /v1/api/communities/{community_id}/modules/{module_id}:
- *   delete:
- *     summary: Delete a module
- *     description: Only the module owner can delete a module.
- *     tags: [Modules]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - name: community_id
- *         in: path
- *         required: true
- *         schema:
- *           type: integer
- *       - name: module_id
- *         in: path
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       '200':
- *         description: Module deleted successfully
- */
-
+  /**
+   * @swagger
+   * /v1/api/communities/{community_id}/modules/{module_id}:
+   *   delete:
+   *     summary: Delete a module
+   *     description: Only the module owner can delete a module.
+   *     tags: [Modules]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - name: community_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *       - name: module_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       '200':
+   *         description: Module deleted successfully
+   */
 
   // LEARNER
 
   /**
- * @swagger
- * /v1/api/modules/{module_id}/lessons:
- *   post:
- *     summary: Create a lesson in a module
- *     description: Only conveners can create lessons. Media upload is optional.
- *     tags: [Lessons]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - name: module_id
- *         in: path
- *         required: true
- *         schema:
- *           type: integer
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             required:
- *               - name
- *               - order_number
- *             properties:
- *               name:
- *                 type: string
- *               description:
- *                 type: string
- *               order_number:
- *                 type: integer
- *               media:
- *                 type: string
- *                 format: binary
- *                 description: Optional lesson media file
- *     responses:
- *       '201':
- *         description: Lesson created successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 lesson_id:
- *                   type: integer
- *                 media_url:
- *                   type: string
- *                 message:
- *                   type: string
- */
+   * @swagger
+   * /v1/api/modules/{module_id}/lessons:
+   *   post:
+   *     summary: Create a lesson in a module
+   *     description: Only conveners can create lessons. Media upload is optional.
+   *     tags: [Lessons]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - name: module_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         multipart/form-data:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - name
+   *               - order_number
+   *             properties:
+   *               name:
+   *                 type: string
+   *               description:
+   *                 type: string
+   *               order_number:
+   *                 type: integer
+   *               media:
+   *                 type: string
+   *                 format: binary
+   *                 description: Optional lesson media file
+   *     responses:
+   *       '201':
+   *         description: Lesson created successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 lesson_id:
+   *                   type: integer
+   *                 media_url:
+   *                   type: string
+   *                 message:
+   *                   type: string
+   */
 
-/**
- * @swagger
- * /v1/api/modules/{module_id}/lessons:
- *   get:
- *     summary: Get all lessons in a module
- *     tags: [Lessons]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - name: module_id
- *         in: path
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       '200':
- *         description: Lessons fetched successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 lessons:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Lesson'
- */
+  /**
+   * @swagger
+   * /v1/api/modules/{module_id}/lessons:
+   *   get:
+   *     summary: Get all lessons in a module
+   *     tags: [Lessons]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - name: module_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       '200':
+   *         description: Lessons fetched successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 lessons:
+   *                   type: array
+   *                   items:
+   *                     $ref: '#/components/schemas/Lesson'
+   */
 
-/**
- * @swagger
- * /v1/api/modules/{module_id}/lessons/{lesson_id}:
- *   get:
- *     summary: Get a lesson by ID
- *     tags: [Lessons]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - name: module_id
- *         in: path
- *         required: true
- *         schema:
- *           type: integer
- *       - name: lesson_id
- *         in: path
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       '200':
- *         description: Lesson fetched successfully
- */
+  /**
+   * @swagger
+   * /v1/api/modules/{module_id}/lessons/{lesson_id}:
+   *   get:
+   *     summary: Get a lesson by ID
+   *     tags: [Lessons]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - name: module_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *       - name: lesson_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       '200':
+   *         description: Lesson fetched successfully
+   */
 
-/**
- * @swagger
- * /v1/api/modules/{module_id}/lessons/{lesson_id}:
- *   put:
- *     summary: Update a lesson
- *     description: Update lesson details. Media upload is optional.
- *     tags: [Lessons]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - name: module_id
- *         in: path
- *         required: true
- *         schema:
- *           type: integer
- *       - name: lesson_id
- *         in: path
- *         required: true
- *         schema:
- *           type: integer
- *     requestBody:
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *               description:
- *                 type: string
- *               order_number:
- *                 type: integer
- *               status:
- *                 type: string
- *               media:
- *                 type: string
- *                 format: binary
- *                 description: Optional lesson media file
- *     responses:
- *       '200':
- *         description: Lesson updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 media_url:
- *                   type: string
- *                 message:
- *                   type: string
- */
+  /**
+   * @swagger
+   * /v1/api/modules/{module_id}/lessons/{lesson_id}:
+   *   put:
+   *     summary: Update a lesson
+   *     description: Update lesson details. Media upload is optional.
+   *     tags: [Lessons]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - name: module_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *       - name: lesson_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     requestBody:
+   *       content:
+   *         multipart/form-data:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               name:
+   *                 type: string
+   *               description:
+   *                 type: string
+   *               order_number:
+   *                 type: integer
+   *               status:
+   *                 type: string
+   *               media:
+   *                 type: string
+   *                 format: binary
+   *                 description: Optional lesson media file
+   *     responses:
+   *       '200':
+   *         description: Lesson updated successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 media_url:
+   *                   type: string
+   *                 message:
+   *                   type: string
+   */
 
-/**
- * @swagger
- * /v1/api/modules/{module_id}/lessons/{lesson_id}:
- *   delete:
- *     summary: Delete a lesson
- *     description: Only the lesson owner can delete the lesson.
- *     tags: [Lessons]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - name: module_id
- *         in: path
- *         required: true
- *         schema:
- *           type: integer
- *       - name: lesson_id
- *         in: path
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       '200':
- *         description: Lesson deleted successfully
- */
+  /**
+   * @swagger
+   * /v1/api/modules/{module_id}/lessons/{lesson_id}:
+   *   delete:
+   *     summary: Delete a lesson
+   *     description: Only the lesson owner can delete the lesson.
+   *     tags: [Lessons]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - name: module_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *       - name: lesson_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       '200':
+   *         description: Lesson deleted successfully
+   */
 
   app.post(
     "/v1/api/cohorts/:cohort_id/communities",
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],
     async function (req, res) {
-      try {        const { cohort_id } = req.params;
+      try {
+        const { cohort_id } = req.params;
         const { type, sub_type, name, description, thumbnail } = req.body;
         const validationResult = await ValidationService.validateObject(
           {
@@ -438,7 +438,7 @@ module.exports = function (app) {
             type: `in:${COMMUNITY_TYPES.join(",")}`,
             sub_type: `required|in:${Object.values(COMMUNITY_SUB_TYPES).join(",")}`,
             description: "required|string",
-            thumbnail: "url",
+            // thumbnail: "url",
           },
           {
             cohort_id,
@@ -447,7 +447,7 @@ module.exports = function (app) {
             sub_type,
             description,
             thumbnail,
-          }
+          },
         );
         if (validationResult.error)
           return res.status(400).json(validationResult);
@@ -468,7 +468,7 @@ module.exports = function (app) {
         const community_id = await sdk.insert({
           cohort_id,
           name,
-          type,
+          type: "course",
           sub_type,
           description,
           thumbnail,
@@ -489,10 +489,10 @@ module.exports = function (app) {
           message: "something went wrong",
         });
       }
-    }
+    },
   );
 
-   // get communities for both users
+  // get communities for both users
   app.get(
     "/v1/api/cohorts/:cohort_id/communities",
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],
@@ -504,7 +504,7 @@ module.exports = function (app) {
         // 🔹 Validate input
         const validationResult = await ValidationService.validateObject(
           { cohort_id: "required|integer" },
-          { cohort_id }
+          { cohort_id },
         );
         if (validationResult.error)
           return res.status(400).json({
@@ -566,7 +566,7 @@ module.exports = function (app) {
           message: "Something went wrong",
         });
       }
-    }
+    },
   );
 
   /**
@@ -614,13 +614,13 @@ module.exports = function (app) {
           {
             cohort_id,
             community_id,
-          }
+          },
         );
         if (validationResult.error)
           return res.status(400).json(validationResult);
 
         const sdk = new BackendSDK();
-        
+
         // 🔹 If learner, ensure they belong to this cohort
         if (role === "learner") {
           sdk.setTable("cohort_learners");
@@ -648,7 +648,7 @@ module.exports = function (app) {
         let lessons = [];
         if (modules.length > 0) {
           lessons = await sdk.rawQuery(
-            `SELECT * FROM module_lessons WHERE module_id IN (${modules.map((m) => m.id).join(",")})`
+            `SELECT * FROM module_lessons WHERE module_id IN (${modules.map((m) => m.id).join(",")})`,
           );
 
           modules = modules.map((m) => {
@@ -672,7 +672,7 @@ module.exports = function (app) {
           message: "something went wrong",
         });
       }
-    }
+    },
   );
 
   /**
@@ -747,7 +747,7 @@ module.exports = function (app) {
             description,
             status,
             thumbnail,
-          }
+          },
         );
         if (validationResult.error)
           return res.status(400).json(validationResult);
@@ -779,7 +779,7 @@ module.exports = function (app) {
             ...(status !== undefined ? { status } : {}),
             ...(thumbnail !== undefined ? { thumbnail } : {}),
           },
-          community_id
+          community_id,
         );
 
         return res.status(200).json({
@@ -794,7 +794,7 @@ module.exports = function (app) {
           message: "something went wrong",
         });
       }
-    }
+    },
   );
 
   /**
@@ -836,13 +836,31 @@ module.exports = function (app) {
           {
             cohort_id,
             community_id,
-          }
+          },
         );
         if (validationResult.error)
           return res.status(400).json(validationResult);
 
         const sdk = new BackendSDK();
 
+        // First, get all modules for this community
+        sdk.setTable("community_modules");
+        const modules = await sdk.get({ community_id });
+
+        // Delete all lessons for each module
+        if (modules.length > 0) {
+          const moduleIds = modules.map((m) => m.id);
+          sdk.setTable("module_lessons");
+          await sdk.rawQuery(
+            `DELETE FROM module_lessons WHERE module_id IN (${moduleIds.join(",")})`,
+          );
+        }
+
+        // Delete all modules for this community
+        sdk.setTable("community_modules");
+        await sdk.deleteWhere({ community_id });
+
+        // Finally, delete the community
         sdk.setTable("communities");
         await sdk.deleteWhere({
           id: community_id,
@@ -862,7 +880,7 @@ module.exports = function (app) {
           message: "something went wrong",
         });
       }
-    }
+    },
   );
 
   // create module
@@ -883,7 +901,7 @@ module.exports = function (app) {
             community_id,
             title,
             order_number,
-          }
+          },
         );
         if (validationResult.error)
           return res.status(400).json(validationResult);
@@ -911,9 +929,9 @@ module.exports = function (app) {
           message: "something went wrong",
         });
       }
-    }
+    },
   );
-  
+
   // Get modules for a community
   app.get(
     "/v1/api/communities/:community_id/modules",
@@ -929,9 +947,9 @@ module.exports = function (app) {
           },
           {
             community_id,
-          }
+          },
         );
-        
+
         if (validationResult.error) {
           return res.status(400).json(validationResult);
         }
@@ -940,11 +958,11 @@ module.exports = function (app) {
         const sdk = new BackendSDK();
         sdk.setTable("communities");
         const communityExists = await sdk.get({ id: community_id });
-        
+
         if (!communityExists || communityExists.length === 0) {
-          return res.status(404).json({ 
-            error: true, 
-            message: "Community not found" 
+          return res.status(404).json({
+            error: true,
+            message: "Community not found",
           });
         }
 
@@ -956,23 +974,24 @@ module.exports = function (app) {
         return res.status(200).json({
           error: false,
           message: "Modules fetched successfully",
-          modules: modules || [] // Return empty array if no modules
+          modules: modules || [], // Return empty array if no modules
         });
-      }
-      catch (err) {
+      } catch (err) {
         console.error("Error fetching modules:", err);
         res.status(500).json({
           error: true,
           message: "Failed to fetch modules",
-          details: process.env.NODE_ENV === 'development' ? err.message : undefined
+          details:
+            process.env.NODE_ENV === "development" ? err.message : undefined,
         });
       }
-    }
+    },
   );
 
   // get module
-  app.get("/v1/api/communities/:community_id/modules/:module_id",
-    [UrlMiddleware, TokenMiddleware({"role": "convener|learner"})],
+  app.get(
+    "/v1/api/communities/:community_id/modules/:module_id",
+    [UrlMiddleware, TokenMiddleware({ role: "convener|learner" })],
     async function (req, res) {
       try {
         const { community_id, module_id } = req.params;
@@ -980,41 +999,39 @@ module.exports = function (app) {
         const validationResult = await ValidationService.validateObject(
           {
             community_id: "required|integer",
-            module_id: "required|integer"
+            module_id: "required|integer",
           },
           {
             community_id,
-            module_id
-          }
+            module_id,
+          },
         );
         if (validationResult.error)
-          return res.status(400).json(validationResult)
-        
-      const sdk = new BackendSDK();
-      sdk.setTable("community_modules");
-      const module = (await sdk.get({ id: module_id, community_id }))[0];
-      if (!module) {
-        return res.status(404).json({
-          error: true,
-          message: "module not found",
+          return res.status(400).json(validationResult);
+
+        const sdk = new BackendSDK();
+        sdk.setTable("community_modules");
+        const module = (await sdk.get({ id: module_id, community_id }))[0];
+        if (!module) {
+          return res.status(404).json({
+            error: true,
+            message: "module not found",
+          });
+        }
+        return res.status(200).json({
+          error: false,
+          message: "module fetched successfully",
+          module,
         });
-      }
-      return res.status(200).json({
-        error: false,
-        message: "module fetched successfully",
-        module
-      });
-    }
-      catch (err) {
+      } catch (err) {
         console.error(err);
         res.status(500).json({
           error: true,
           message: "something went wrong",
         });
       }
-    }
-  )
-
+    },
+  );
 
   // edit module
   app.put(
@@ -1039,7 +1056,7 @@ module.exports = function (app) {
             title,
             status,
             order_number,
-          }
+          },
         );
         if (validationResult.error)
           return res.status(400).json(validationResult);
@@ -1053,7 +1070,7 @@ module.exports = function (app) {
             ...(order_number !== undefined ? { order_number } : {}),
             ...(status !== undefined ? { status } : {}),
           },
-          { id: module_id, community_id }
+          { id: module_id, community_id },
         );
 
         return res.status(200).json({
@@ -1068,7 +1085,7 @@ module.exports = function (app) {
           message: "something went wrong",
         });
       }
-    }
+    },
   );
 
   // delete module
@@ -1086,13 +1103,18 @@ module.exports = function (app) {
           {
             module_id,
             community_id,
-          }
+          },
         );
         if (validationResult.error)
           return res.status(400).json(validationResult);
 
         const sdk = new BackendSDK();
 
+        // First delete lessons related to the module to avoid FK constraint errors
+        sdk.setTable("module_lessons");
+        await sdk.deleteWhere({ module_id: module_id });
+
+        // Then delete the module
         sdk.setTable("community_modules");
         await sdk.deleteWhere({
           id: module_id,
@@ -1111,12 +1133,16 @@ module.exports = function (app) {
           message: "something went wrong",
         });
       }
-    }
+    },
   );
 
   app.post(
     "/v1/api/modules/:module_id/lessons",
-    [UrlMiddleware, TokenMiddleware({ role: "convener" }), upload.single("media")],
+    [
+      UrlMiddleware,
+      TokenMiddleware({ role: "convener" }),
+      upload.single("media"),
+    ],
     async (req, res) => {
       try {
         const { module_id } = req.params;
@@ -1124,22 +1150,24 @@ module.exports = function (app) {
 
         let mediaUrl = req.body.media; // fallback if no file uploaded
         if (req.file) {
-          mediaUrl = await uploadToCloudinary(req.file.buffer, 'lessons');
+          mediaUrl = await uploadToCloudinary(req.file.buffer, "lessons");
         }
 
         const validationResult = await ValidationService.validateObject(
           {
-            module_id: "required|integer",
-            name: "required|string",
+            module_id: "integer",
+            name: "string",
             description: "string",
-            order_number: "required|integer",
-            media: "url|optional",
+            order_number: "integer",
+            media: "url",
           },
-          { module_id, name, description, order_number, media: mediaUrl }
+          { module_id, name, description, order_number, media: mediaUrl },
         );
 
-        if (validationResult.error) return res.status(400).json(validationResult);
-
+        if (validationResult.error) {
+          console.error("Validation error:", validationResult);
+          return res.status(400).json(validationResult);
+        }
         const sdk = new BackendSDK();
         sdk.setTable("module_lessons");
         const lesson_id = await sdk.insert({
@@ -1161,13 +1189,13 @@ module.exports = function (app) {
         console.error(err);
         res.status(500).json({ error: true, message: "Something went wrong" });
       }
-    }
+    },
   );
 
   // get lessons
   app.get(
     "/v1/api/modules/:module_id/lessons",
-    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
+    [UrlMiddleware, TokenMiddleware({ role: "convener|learner" })],
     async function (req, res) {
       try {
         const { module_id } = req.params;
@@ -1178,7 +1206,7 @@ module.exports = function (app) {
           },
           {
             module_id,
-          }
+          },
         );
         if (validationResult.error)
           return res.status(400).json(validationResult);
@@ -1201,7 +1229,7 @@ module.exports = function (app) {
           message: "something went wrong",
         });
       }
-    }
+    },
   );
 
   // get lesson
@@ -1220,7 +1248,7 @@ module.exports = function (app) {
           {
             module_id,
             lesson_id,
-          }
+          },
         );
         if (validationResult.error)
           return res.status(400).json(validationResult);
@@ -1249,13 +1277,17 @@ module.exports = function (app) {
           message: "something went wrong",
         });
       }
-    }
+    },
   );
-  
+
   // edit lesson
   app.put(
     "/v1/api/modules/:module_id/lessons/:lesson_id",
-    [UrlMiddleware, TokenMiddleware({ role: "convener" }), upload.single("media")],
+    [
+      UrlMiddleware,
+      TokenMiddleware({ role: "convener" }),
+      upload.single("media"),
+    ],
     async function (req, res) {
       try {
         const { module_id, lesson_id } = req.params;
@@ -1265,7 +1297,7 @@ module.exports = function (app) {
         let mediaUrl = req.body.media;
         if (req.file) {
           // Upload to Cloudinary
-          mediaUrl = await uploadToCloudinary(req.file.buffer, 'lessons');
+          mediaUrl = await uploadToCloudinary(req.file.buffer, "lessons");
         }
 
         const validationResult = await ValidationService.validateObject(
@@ -1274,7 +1306,7 @@ module.exports = function (app) {
             lesson_id: "required|integer",
             name: "string",
             description: "string",
-            media: "url|optional",
+            media: "url",
             status: `in:${Object.values(LESSON_STATUSES).join(",")}`,
             order_number: "integer",
           },
@@ -1286,11 +1318,13 @@ module.exports = function (app) {
             media: mediaUrl,
             status,
             order_number,
-          }
+          },
         );
 
-        if (validationResult.error) return res.status(400).json(validationResult);
-
+        if (validationResult.error) {
+          console.log(validationResult);
+          return res.status(400).json(validationResult);
+        }
         const sdk = new BackendSDK();
         sdk.setTable("module_lessons");
 
@@ -1302,7 +1336,7 @@ module.exports = function (app) {
             ...(order_number !== undefined ? { order_number } : {}),
             ...(status !== undefined ? { status } : {}),
           },
-          { id: lesson_id, module_id }
+          { id: lesson_id, module_id },
         );
 
         return res.status(200).json({
@@ -1317,7 +1351,7 @@ module.exports = function (app) {
           message: "Something went wrong",
         });
       }
-    }
+    },
   );
 
   // delete lesson
@@ -1335,7 +1369,7 @@ module.exports = function (app) {
           {
             module_id,
             lesson_id,
-          }
+          },
         );
         if (validationResult.error)
           return res.status(400).json(validationResult);
@@ -1360,7 +1394,7 @@ module.exports = function (app) {
           message: "something went wrong",
         });
       }
-    }
+    },
   );
 
   return [];

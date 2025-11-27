@@ -81,7 +81,11 @@ module.exports = {
   async down(queryInterface, Sequelize) {
     // drop ENUMs first to avoid errors in Postgres
     await queryInterface.dropTable("posts");
-    await queryInterface.sequelize.query("DROP TYPE IF EXISTS enum_posts_can_reply;");
-    await queryInterface.sequelize.query("DROP TYPE IF EXISTS enum_posts_status;");
+    await queryInterface.sequelize.query(
+      "DROP TYPE IF EXISTS enum_posts_can_reply;",
+    );
+    await queryInterface.sequelize.query(
+      "DROP TYPE IF EXISTS enum_posts_status;",
+    );
   },
 };

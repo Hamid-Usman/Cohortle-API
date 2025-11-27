@@ -43,7 +43,7 @@ module.exports = class BackendSDK {
     selectStr = "*",
     orderBy = "id",
     direction = "DESC",
-    customWhere = null
+    customWhere = null,
   ) {
     try {
       let sql = "SELECT " + selectStr + " FROM " + this._table + " WHERE ";
@@ -326,7 +326,7 @@ module.exports = class BackendSDK {
     use ${this._database}; ${sql}`,
       {
         raw: false,
-      }
+      },
     );
     if (result.length > 0) {
       return result[1][2] ?? [];

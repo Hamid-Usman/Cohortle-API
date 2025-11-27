@@ -48,7 +48,7 @@ module.exports = function (app) {
           {
             role: "required|in:convener,learner",
           },
-          { role }
+          { role },
         );
         if (validationResult.error)
           return res.status(400).json(validationResult);
@@ -63,7 +63,7 @@ module.exports = function (app) {
             role: role,
           },
           5 * 60 * 1000,
-          process.env.JWT_SECRET
+          process.env.JWT_SECRET,
         );
         return res.status(200).json({
           error: false,
@@ -78,7 +78,7 @@ module.exports = function (app) {
           message: "something went wrong",
         });
       }
-    }
+    },
   );
 
   /**
@@ -128,14 +128,22 @@ module.exports = function (app) {
    */
   app.put(
     "/v1/api/profile",
-    [upload.single("image"), UrlMiddleware, TokenMiddleware({ role: "learner|convener" })],
+    [
+      upload.single("image"),
+      UrlMiddleware,
+      TokenMiddleware({ role: "learner|convener" }),
+    ],
     async (req, res) => {
       try {
-        const { first_name, last_name, username, password, location, socials } = req.body;
+        const { first_name, last_name, username, password, location, socials } =
+          req.body;
 
         let profileImageUrl;
         if (req.file) {
-          profileImageUrl = await uploadToCloudinary(req.file.buffer, 'profiles');
+          profileImageUrl = await uploadToCloudinary(
+            req.file.buffer,
+            "profiles",
+          );
           console.log("Cloudinary upload URL:", profileImageUrl);
         }
 
@@ -148,10 +156,11 @@ module.exports = function (app) {
             location: "string",
             socials: "string",
           },
-          { first_name, last_name, username, password, location, socials }
+          { first_name, last_name, username, password, location, socials },
         );
 
-        if (validationResult.error) return res.status(400).json(validationResult);
+        if (validationResult.error)
+          return res.status(400).json(validationResult);
 
         let hashedPassword;
         if (password) hashedPassword = await PasswordService.hash(password);
@@ -185,7 +194,7 @@ module.exports = function (app) {
         console.error("Profile update error:", err);
         res.status(500).json({ error: true, message: "Something went wrong" });
       }
-    }
+    },
   );
 
   /**
@@ -206,50 +215,48 @@ module.exports = function (app) {
    *         description: Server error
    */
   app.get(
-  "/v1/api/profile",
-  [UrlMiddleware, TokenMiddleware({ role: "learner|convener" })],
-  async function (req, res) {
-    try {
-      const sdk = new BackendSDK();
-      sdk.setTable("users");
+    "/v1/api/profile",
+    [UrlMiddleware, TokenMiddleware({ role: "learner|convener" })],
+    async function (req, res) {
+      try {
+        const sdk = new BackendSDK();
+        sdk.setTable("users");
 
-      // Fetch the current user's profile using their ID from the token
-      const user = (await sdk.get({ id: req.user_id }))[0];
+        // Fetch the current user's profile using their ID from the token
+        const user = (await sdk.get({ id: req.user_id }))[0];
 
-      if (!user) {
-        return res.status(404).json({
+        if (!user) {
+          return res.status(404).json({
+            error: true,
+            message: "user not found",
+          });
+        }
+
+        // Return selected safe fields
+        return res.status(200).json({
+          error: false,
+          message: {
+            first_name: user.first_name,
+            last_name: user.last_name,
+            username: user.username,
+            email: user.email,
+            location: user.location,
+            socials: user.socials,
+            role: user.role,
+            profile_image: user.profile_image,
+            created_at: user.created_at,
+            updated_at: user.updated_at,
+          },
+        });
+      } catch (err) {
+        console.error("Profile fetch error:", err);
+        res.status(500).json({
           error: true,
-          message: "user not found",
+          message: "something went wrong",
         });
       }
-
-      // Return selected safe fields
-      return res.status(200).json({
-        error: false,
-        message: {
-          first_name: user.first_name,
-          last_name: user.last_name,
-          username: user.username,
-          email: user.email,
-          location: user.location,
-          socials: user.socials,
-          role: user.role,
-          profile_image: user.profile_image,
-          created_at: user.created_at,
-          updated_at: user.updated_at,
-        },
-      });
-    } catch (err) {
-      console.error("Profile fetch error:", err);
-      res.status(500).json({
-        error: true,
-        message: "something went wrong",
-      });
-    }
-  }
+    },
   );
-
-
 
   app.put(
     "/v1/api/profile/set-password",
@@ -262,7 +269,7 @@ module.exports = function (app) {
             current_password: "required|string",
             new_password: "required|string",
           },
-          { current_password, new_password }
+          { current_password, new_password },
         );
         if (validationResult.error)
           return res.status(400).json(validationResult);
@@ -281,7 +288,7 @@ module.exports = function (app) {
 
         const isValid = await PasswordService.compareHash(
           current_password,
-          user.password
+          user.password,
         );
         if (!isValid) {
           return res.status(401).json({
@@ -296,7 +303,7 @@ module.exports = function (app) {
           {
             password: hashedPassword,
           },
-          req.user_id
+          req.user_id,
         );
 
         return res.status(200).json({
@@ -311,7 +318,7 @@ module.exports = function (app) {
           message: "something went wrong",
         });
       }
-    }
+    },
   );
 
   app.delete(
@@ -324,7 +331,7 @@ module.exports = function (app) {
           {
             password: "required|string",
           },
-          { password }
+          { password },
         );
         if (validationResult.error)
           return res.status(400).json(validationResult);
@@ -343,7 +350,7 @@ module.exports = function (app) {
 
         const isValid = await PasswordService.compareHash(
           password,
-          user.password
+          user.password,
         );
         if (!isValid) {
           return res.status(401).json({
@@ -357,7 +364,7 @@ module.exports = function (app) {
           {
             status: USER_STATUSES.INACTIVE,
           },
-          req.user_id
+          req.user_id,
         );
 
         return res.status(200).json({
@@ -372,7 +379,7 @@ module.exports = function (app) {
           message: "something went wrong",
         });
       }
-    }
+    },
   );
 
   return [];

@@ -61,7 +61,7 @@ module.exports = {
     viewModel,
     viewPath = "/",
     fieldsStoreKey,
-    defaultValue = {}
+    defaultValue = {},
   ) => {
     const validationError = req.validationError;
 
@@ -98,7 +98,7 @@ module.exports = {
   validateInputMethod: async (
     validationObject = {},
     _extendMessages = {},
-    req
+    req,
   ) => {
     const validation = new Validator(req.body, validationObject);
     addCustomMessages(_extendMessages);
@@ -110,8 +110,8 @@ module.exports = {
       if (!isValid) {
         console.error(
           new Error(
-            `Invalid request body: ${JSON.stringify(req.body, null, 5)}`
-          )
+            `Invalid request body: ${JSON.stringify(req.body, null, 5)}`,
+          ),
         );
         error = formatValidationError(validation.errors);
         return { error: true, message: "Validation Error", validation: error };

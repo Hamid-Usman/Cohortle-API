@@ -39,7 +39,7 @@ module.exports = function (app) {
           message: "something went wrong",
         });
       }
-    }
+    },
   );
 
   app.put(
@@ -71,7 +71,7 @@ module.exports = function (app) {
             new_polls,
             mentions,
             replies_on_post,
-          }
+          },
         );
         if (validationResult.error)
           return res.status(400).json(validationResult);
@@ -87,7 +87,7 @@ module.exports = function (app) {
             ...(mentions !== undefined ? { mentions } : {}),
             ...(replies_on_post !== undefined ? { replies_on_post } : {}),
           },
-          { user_id: req.user_id }
+          { user_id: req.user_id },
         );
 
         return res.status(200).json({
@@ -102,7 +102,7 @@ module.exports = function (app) {
           message: "something went wrong",
         });
       }
-    }
+    },
   );
 
   return [];

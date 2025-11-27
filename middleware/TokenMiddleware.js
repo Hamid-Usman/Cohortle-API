@@ -13,7 +13,7 @@ module.exports = function (options) {
       const result = JwtService.verifyAccessToken(
         token,
         process.env.JWT_SECRET,
-        options
+        options,
       );
       if (!result) {
         return res.status(401).json({
