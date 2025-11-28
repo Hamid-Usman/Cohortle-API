@@ -15,15 +15,12 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 // Helper function to upload buffer to Cloudinary
-function uploadToCloudinary(buffer, folder = "lessons") {
+function uploadToCloudinary(buffer, folder = "lessons", resourceType = "auto") {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
         folder,
-        resource_type: "video", // THIS IS THE KEY LINE
-        // Optional: better video settings
-        // eager: [{ streaming_profile: "hd", format: "m3u8" }], // for HLS
-        // allowed_formats: ["mp4", "webm", "mov"],
+        resource_type: resourceType,
       },
       (error, result) => {
         if (error) {

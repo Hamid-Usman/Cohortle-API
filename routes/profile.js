@@ -5,7 +5,7 @@ const JwtService = require("../services/JwtService");
 const PasswordService = require("../services/PasswordService");
 const ValidationService = require("../services/ValidationService");
 const { USER_STATUSES } = require("../utils/mappings");
-const upload = require("../middleware/uploadMiddleware");
+const { upload, uploadToCloudinary } = require("../config/cloudinary");
 
 module.exports = function (app) {
   /**
@@ -140,7 +140,7 @@ module.exports = function (app) {
 
         let profileImageUrl;
         if (req.file) {
-          profileImageUrl = await uploadToCloudinary(
+          profileImagerl = await uploadToCloudinary(
             req.file.buffer,
             "profiles",
           );

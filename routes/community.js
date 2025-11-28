@@ -3,7 +3,7 @@ const TokenMiddleware = require("../middleware/TokenMiddleware");
 const UrlMiddleware = require("../middleware/UrlMiddleware");
 const ValidationService = require("../services/ValidationService");
 
-const { upload, uploadToCloudinary } = require("../config/cloudinary");
+const { upload, uploadToCloudinary, deleteFromCloudinary, extractPublicId } = require("../config/cloudinary");
 
 const {
   COMMUNITY_STATUSES,
@@ -1141,7 +1141,7 @@ module.exports = function (app) {
     [
       UrlMiddleware,
       TokenMiddleware({ role: "convener" }),
-      upload.single("media"),
+      // upload.single("media"),
     ],
     async (req, res) => {
       try {
@@ -1376,7 +1376,31 @@ module.exports = function (app) {
 
         const sdk = new BackendSDK();
 
+        // First, fetch the lesson to get the media URL
         sdk.setTable("module_lessons");
+        const lesson = (await sdk.get({ id: lesson_id, module_id }))[0];
+
+        if (!lesson) {
+          return res.status(404).json({
+            error: true,
+            message: "lesson not found",
+          });
+        }
+
+        // If the lesson has media, delete it from Cloudinary
+        if (lesson.media) {
+          try {
+            const publicId = extractPublicId(lesson.media);
+            if (publicId) {
+              await deleteFromCloudinary(publicId);
+            }
+          } catch (cloudinaryError) {
+            console.error("Error deleting media from Cloudinary:", cloudinaryError);
+            // Continue with lesson deletion even if Cloudinary delete fails
+          }
+        }
+
+        // Delete the lesson from the database
         await sdk.deleteWhere({
           id: lesson_id,
           module_id: module_id,
