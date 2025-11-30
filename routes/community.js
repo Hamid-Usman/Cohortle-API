@@ -381,6 +381,8 @@ module.exports = function (app) {
    *                 type: integer
    *               status:
    *                 type: string
+   *               text:
+   *                 type: string
    *               media:
    *                 type: string
    *                 format: binary
@@ -1281,78 +1283,91 @@ module.exports = function (app) {
   );
 
   // edit lesson
-  app.put(
-    "/v1/api/modules/:module_id/lessons/:lesson_id",
-    [
-      UrlMiddleware,
-      TokenMiddleware({ role: "convener" }),
-      upload.single("media"),
-    ],
-    async function (req, res) {
-      try {
-        const { module_id, lesson_id } = req.params;
-        const { name, description, status, order_number } = req.body;
+app.put(
+  "/v1/api/modules/:module_id/lessons/:lesson_id",
+  [
+    UrlMiddleware,
+    TokenMiddleware({ role: "convener" }),
+    upload.single("media"),
+  ],
+  async function (req, res) {
+    try {
+      const { module_id, lesson_id } = req.params;
+      const { name, description, status, order_number, text } = req.body;
 
-        // Optional media: uploaded file or URL in body
-        let mediaUrl = req.body.media;
-        if (req.file) {
-          // Upload to Cloudinary
+      console.log('📝 Received lesson update:', { 
+        module_id, 
+        lesson_id,
+        hasText: !!text, 
+        textLength: text?.length || 0,
+        hasMedia: !!req.file,
+        contentType: req.headers['content-type']
+      });
+
+      let mediaUrl = req.body.media;
+
+      if (req.file) {
+        try {
           mediaUrl = await uploadToCloudinary(req.file.buffer, "lessons");
+          console.log('✅ Media uploaded:', mediaUrl);
+        } catch (cloudinaryError) {
+          console.error('❌ Cloudinary failed:', cloudinaryError.message);
+          mediaUrl = req.body.media || null;
         }
+      }
 
-        const validationResult = await ValidationService.validateObject(
-          {
-            module_id: "required|integer",
-            lesson_id: "required|integer",
-            name: "string",
-            description: "string",
-            media: "url",
-            status: `in:${Object.values(LESSON_STATUSES).join(",")}`,
-            order_number: "integer",
-          },
-          {
-            module_id,
-            lesson_id,
-            name,
-            description,
-            media: mediaUrl,
-            status,
-            order_number,
-          },
-        );
+      const sdk = new BackendSDK();
+      sdk.setTable("module_lessons");
+      const lesson = (await sdk.get({ id: lesson_id, module_id }))[0];
 
-        if (validationResult.error) {
-          console.log(validationResult);
-          return res.status(400).json(validationResult);
-        }
-        const sdk = new BackendSDK();
-        sdk.setTable("module_lessons");
-
-        await sdk.updateWhere(
-          {
-            ...(name !== undefined ? { name } : {}),
-            ...(description !== undefined ? { description } : {}),
-            ...(mediaUrl !== undefined ? { media: mediaUrl } : {}),
-            ...(order_number !== undefined ? { order_number } : {}),
-            ...(status !== undefined ? { status } : {}),
-          },
-          { id: lesson_id, module_id },
-        );
-
-        return res.status(200).json({
-          error: false,
-          message: "Lesson updated successfully",
-          media_url: mediaUrl, // return updated media URL
-        });
-      } catch (err) {
-        console.error("Lesson update error:", err);
-        res.status(500).json({
+      if (!lesson) {
+        return res.status(404).json({
           error: true,
-          message: "Something went wrong",
+          message: "lesson not found",
         });
       }
-    },
-  );
+
+      // If updating media and it's different, delete the old one
+      if (mediaUrl && lesson.media && mediaUrl !== lesson.media) {
+        try {
+          const publicId = extractPublicId(lesson.media);
+          if (publicId) {
+            await deleteFromCloudinary(publicId);
+          }
+        } catch (cloudinaryError) {
+          console.error("Error deleting old media from Cloudinary:", cloudinaryError);
+          // Continue even if delete fails
+        }
+      }
+
+      // Update the lesson
+      await sdk.updateWhere(
+        {
+          ...(name !== undefined ? { name } : {}),
+          ...(description !== undefined ? { description } : {}),
+          ...(order_number !== undefined ? { order_number } : {}),
+          ...(status !== undefined ? { status } : {}),
+          ...(text !== undefined ? { text } : {}),
+          ...(mediaUrl !== undefined ? { media: mediaUrl } : {}),
+        },
+        { id: lesson_id, module_id }
+      );
+
+      return res.status(200).json({
+        error: false,
+        message: "lesson updated successfully",
+        media_url: mediaUrl,
+      });
+    } catch (err) {
+      console.error("Lesson update error:", err);
+      res.status(500).json({
+        error: true,
+        message: "Something went wrong",
+        details: process.env.NODE_ENV === "development" ? err.message : undefined,
+      });
+    }
+  }
+);
 
   // delete lesson
   app.delete(
