@@ -5,7 +5,6 @@ const JwtService = require("../services/JwtService");
 const PasswordService = require("../services/PasswordService");
 const ValidationService = require("../services/ValidationService");
 const { USER_STATUSES } = require("../utils/mappings");
-const { upload, uploadToCloudinary } = require("../config/cloudinary");
 
 module.exports = function (app) {
   /**
@@ -129,7 +128,7 @@ module.exports = function (app) {
   app.put(
     "/v1/api/profile",
     [
-      upload.single("image"),
+      // upload.single("image"),
       UrlMiddleware,
       TokenMiddleware({ role: "learner|convener" }),
     ],
@@ -139,13 +138,13 @@ module.exports = function (app) {
           req.body;
 
         let profileImageUrl;
-        if (req.file) {
-          profileImagerl = await uploadToCloudinary(
-            req.file.buffer,
-            "profiles",
-          );
-          console.log("Cloudinary upload URL:", profileImageUrl);
-        }
+        // if (req.file) {
+        //   profileImagerl = await uploadToCloudinary(
+        //     req.file.buffer,
+        //     "profiles",
+        //   );
+        //   console.log("Cloudinary upload URL:", profileImageUrl);
+        // }
 
         const validationResult = await ValidationService.validateObject(
           {

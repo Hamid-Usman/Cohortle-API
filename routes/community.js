@@ -2,8 +2,7 @@ const BackendSDK = require("../core/BackendSDK");
 const TokenMiddleware = require("../middleware/TokenMiddleware");
 const UrlMiddleware = require("../middleware/UrlMiddleware");
 const ValidationService = require("../services/ValidationService");
-
-const { upload, uploadToCloudinary, deleteFromCloudinary, extractPublicId } = require("../config/cloudinary");
+const { upload, uploadToBunny, deleteFromBunny, getPlaybackUrl } = require("../config/bunnyStream");
 
 const {
   COMMUNITY_STATUSES,
@@ -1143,40 +1142,30 @@ module.exports = function (app) {
     [
       UrlMiddleware,
       TokenMiddleware({ role: "convener" }),
-      // upload.single("media"),
+      upload.single("media"),
     ],
     async (req, res) => {
       try {
         const { module_id } = req.params;
         const { name, description, order_number } = req.body;
 
-        let mediaUrl = req.body.media; // fallback if no file uploaded
+        let bunnyGuid = null;
+
         if (req.file) {
-          mediaUrl = await uploadToCloudinary(req.file.buffer, "lessons");
+          const result = await uploadToBunny(req.file.buffer, {
+            title: name || req.file.originalname,
+          });
+          bunnyGuid = result.videoId; // This is the GUID
         }
 
-        const validationResult = await ValidationService.validateObject(
-          {
-            module_id: "integer",
-            name: "string",
-            description: "string",
-            order_number: "integer",
-            media: "url",
-          },
-          { module_id, name, description, order_number, media: mediaUrl },
-        );
-
-        if (validationResult.error) {
-          console.error("Validation error:", validationResult);
-          return res.status(400).json(validationResult);
-        }
         const sdk = new BackendSDK();
         sdk.setTable("module_lessons");
+
         const lesson_id = await sdk.insert({
           module_id,
           name,
-          description,
-          media: mediaUrl,
+          description: description || null,
+          media: bunnyGuid,           // Store ONLY the GUID in `media`
           order_number,
           status: LESSON_STATUSES.DRAFT,
         });
@@ -1185,13 +1174,13 @@ module.exports = function (app) {
           error: false,
           message: "Lesson created successfully",
           lesson_id,
-          media_url: mediaUrl,
+          media_url: getPlaybackUrl(bunnyGuid),  // Return full URL to frontend
         });
       } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: true, message: "Something went wrong" });
+        console.error("Lesson create error:", err);
+        return res.status(500).json({ error: true, message: "Upload failed" });
       }
-    },
+    }
   );
 
   // get lessons
@@ -1282,65 +1271,33 @@ module.exports = function (app) {
     },
   );
 
-  // edit lesson
+  // UPDATE LESSON
 app.put(
   "/v1/api/modules/:module_id/lessons/:lesson_id",
-  [
-    UrlMiddleware,
-    TokenMiddleware({ role: "convener" }),
-    upload.single("media"),
-  ],
+  [UrlMiddleware, TokenMiddleware({ role: "convener" }), upload.single("media")],
   async function (req, res) {
     try {
       const { module_id, lesson_id } = req.params;
       const { name, description, status, order_number, text } = req.body;
 
-      console.log('📝 Received lesson update:', { 
-        module_id, 
-        lesson_id,
-        hasText: !!text, 
-        textLength: text?.length || 0,
-        hasMedia: !!req.file,
-        contentType: req.headers['content-type']
-      });
-
-      let mediaUrl = req.body.media;
-
-      if (req.file) {
-        try {
-          mediaUrl = await uploadToCloudinary(req.file.buffer, "lessons");
-          console.log('✅ Media uploaded:', mediaUrl);
-        } catch (cloudinaryError) {
-          console.error('❌ Cloudinary failed:', cloudinaryError.message);
-          mediaUrl = req.body.media || null;
-        }
-      }
-
       const sdk = new BackendSDK();
       sdk.setTable("module_lessons");
       const lesson = (await sdk.get({ id: lesson_id, module_id }))[0];
+      if (!lesson) return res.status(404).json({ error: true, message: "Lesson not found" });
 
-      if (!lesson) {
-        return res.status(404).json({
-          error: true,
-          message: "lesson not found",
+      let currentGuid = lesson.media; // Start with existing
+
+      if (req.file) {
+        // Only run upload logic if a new file was sent
+        if (currentGuid) await deleteFromBunny(currentGuid);
+
+        const result = await uploadToBunny(req.file.buffer, {
+          title: name || lesson.name,
         });
+        currentGuid = result.videoId;
       }
 
-      // If updating media and it's different, delete the old one
-      if (mediaUrl && lesson.media && mediaUrl !== lesson.media) {
-        try {
-          const publicId = extractPublicId(lesson.media);
-          if (publicId) {
-            await deleteFromCloudinary(publicId);
-          }
-        } catch (cloudinaryError) {
-          console.error("Error deleting old media from Cloudinary:", cloudinaryError);
-          // Continue even if delete fails
-        }
-      }
-
-      // Update the lesson
+      // Save to DB (only if something changed)
       await sdk.updateWhere(
         {
           ...(name !== undefined ? { name } : {}),
@@ -1348,23 +1305,20 @@ app.put(
           ...(order_number !== undefined ? { order_number } : {}),
           ...(status !== undefined ? { status } : {}),
           ...(text !== undefined ? { text } : {}),
-          ...(mediaUrl !== undefined ? { media: mediaUrl } : {}),
+          ...(currentGuid !== lesson.media ? { media: currentGuid } : {}),
         },
         { id: lesson_id, module_id }
       );
 
+      // THIS IS THE FIX: Always return the final value
       return res.status(200).json({
         error: false,
-        message: "lesson updated successfully",
-        media_url: mediaUrl,
+        message: "Lesson updated successfully",
+        media_url: getPlaybackUrl(currentGuid),  // ← Now always correct
       });
     } catch (err) {
       console.error("Lesson update error:", err);
-      res.status(500).json({
-        error: true,
-        message: "Something went wrong",
-        details: process.env.NODE_ENV === "development" ? err.message : undefined,
-      });
+      return res.status(500).json({ error: true, message: "Update failed" });
     }
   }
 );
