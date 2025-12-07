@@ -5,7 +5,8 @@ const JwtService = require("../services/JwtService");
 const PasswordService = require("../services/PasswordService");
 const ValidationService = require("../services/ValidationService");
 const { USER_STATUSES } = require("../utils/mappings");
-
+const multer = require('multer');
+const upload = multer();
 module.exports = function (app) {
   /**
    * @swagger
@@ -128,13 +129,13 @@ module.exports = function (app) {
   app.put(
     "/v1/api/profile",
     [
-      // upload.single("image"),
+      upload.single("image"),
       UrlMiddleware,
       TokenMiddleware({ role: "learner|convener" }),
     ],
     async (req, res) => {
       try {
-        const { first_name, last_name, username, password, location, socials } =
+        const { first_name, last_name, username, password, location, socials, bio } =
           req.body;
 
         let profileImageUrl;
@@ -154,8 +155,9 @@ module.exports = function (app) {
             password: "string",
             location: "string",
             socials: "string",
+            bio: "string"
           },
-          { first_name, last_name, username, password, location, socials },
+          { first_name, last_name, username, password, location, socials, bio },
         );
 
         if (validationResult.error)
@@ -171,7 +173,8 @@ module.exports = function (app) {
           ...(hashedPassword && { password: hashedPassword }),
           ...(location && { location }),
           ...(socials && { socials }),
-          ...(profileImageUrl && { profile_image: profileImageUrl }),
+          ...(bio && { bio }),
+          // ...(profileImageUrl && { profile_image: profileImageUrl }),
         };
 
         const sdk = new BackendSDK();
@@ -186,6 +189,7 @@ module.exports = function (app) {
             USERNAME: username,
             LOCATION: location,
             SOCIALS: socials,
+            BIO: bio,
             PROFILE_IMAGE: profileImageUrl || null,
           },
         });
@@ -245,6 +249,7 @@ module.exports = function (app) {
             profile_image: user.profile_image,
             created_at: user.created_at,
             updated_at: user.updated_at,
+            bio: user.bio
           },
         });
       } catch (err) {
