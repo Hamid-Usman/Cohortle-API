@@ -8,6 +8,7 @@ const swaggerJsdoc = require("swagger-jsdoc");
 const authRoutes = require("./routes/auth");
 const cohortRoutes = require("./routes/cohort");
 const communityRoutes = require("./routes/community");
+const programmeRoutes = require("./routes/programme");
 const profileRoutes = require("./routes/profile");
 
 const app = express();
@@ -78,15 +79,16 @@ app.get("/docs", (req, res) => {
 authRoutes(app);
 cohortRoutes(app);
 communityRoutes(app);
+programmeRoutes(app);
 profileRoutes(app);
 
 // =====================
 // Fallback Routes
 // =====================
-app.get("/home", (req, res) =>
+app.get("/api-docs", (req, res) =>
   res.sendFile(path.join(__dirname, "index.html")),
 );
-app.get("/", (req, res) => res.redirect("/home"));
+app.get("/", (req, res) => res.redirect("/api-docs"));
 
 // =====================
 // Error Handling

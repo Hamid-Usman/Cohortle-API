@@ -4,6 +4,7 @@ var _cohorts = require("./cohorts");
 var _communities = require("./communities");
 var _community_modules = require("./community_modules");
 var _module_lessons = require("./module_lessons");
+var _programmes = require("./programmes");
 var _users = require("./users");
 
 function initModels(sequelize) {
@@ -12,6 +13,7 @@ function initModels(sequelize) {
   var communities = _communities(sequelize, DataTypes);
   var community_modules = _community_modules(sequelize, DataTypes);
   var module_lessons = _module_lessons(sequelize, DataTypes);
+  var programmes = _programmes(sequelize, DataTypes);
   var users = _users(sequelize, DataTypes);
 
   cohort_members.belongsTo(cohorts, { as: "cohort", foreignKey: "cohort_id" });
@@ -27,6 +29,14 @@ function initModels(sequelize) {
   });
   communities.hasMany(community_modules, {
     as: "community_modules",
+    foreignKey: "community_id",
+  });
+  programmes.belongsTo(communities, {
+    as: "community",
+    foreignKey: "community_id",
+  });
+  communities.hasMany(programmes, {
+    as: "programmes",
     foreignKey: "community_id",
   });
   module_lessons.belongsTo(community_modules, {
@@ -54,6 +64,7 @@ function initModels(sequelize) {
     communities,
     community_modules,
     module_lessons,
+    programmes,
     users,
   };
 }
