@@ -9,7 +9,14 @@ const authRoutes = require("./routes/auth");
 const cohortRoutes = require("./routes/cohort");
 const communityRoutes = require("./routes/community");
 const programmeRoutes = require("./routes/programme");
+const moduleRoutes = require("./routes/module");
+const lessonRoutes = require("./routes/lesson");
 const profileRoutes = require("./routes/profile");
+const activityRoutes = require("./routes/activity");
+const announcementRoutes = require("./routes/announcement");
+const discussionRoutes = require("./routes/discussion");
+const lessonProgressRoutes = require("./routes/lesson_progress");
+const scheduleRoutes = require("./routes/schedule");
 
 const app = express();
 
@@ -77,10 +84,17 @@ app.get("/docs", (req, res) => {
 // API Routes
 // =====================
 authRoutes(app);
-cohortRoutes(app);
 communityRoutes(app);
 programmeRoutes(app);
+cohortRoutes(app);
+moduleRoutes(app);
+lessonRoutes(app);
 profileRoutes(app);
+activityRoutes(app);
+announcementRoutes(app);
+discussionRoutes(app);
+lessonProgressRoutes(app);
+scheduleRoutes(app);
 
 // =====================
 // Fallback Routes

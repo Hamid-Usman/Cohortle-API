@@ -9,11 +9,11 @@ module.exports = (sequelize) => {
         primaryKey: true,
         autoIncrement: true,
       },
-      learner_id: {
+      user_id: {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-          model: "learners",
+          model: "users",
           key: "id",
         },
       },
@@ -41,18 +41,11 @@ module.exports = (sequelize) => {
         type: DataTypes.DATE,
         allowNull: true,
       },
-      created_at: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW,
-      },
-      updated_at: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW,
-      },
     },
     {
+      sequelize,
       tableName: "lesson_progress",
-      timestamps: false, // disable automatic timestamps since you defined them manually
+      timestamps: true,
     },
   );
 };

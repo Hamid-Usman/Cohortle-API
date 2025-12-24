@@ -9,25 +9,21 @@ module.exports = function (sequelize, DataTypes) {
         allowNull: false,
         primaryKey: true,
       },
-      cohort_id: {
+      owner_id: {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-          model: "cohorts",
+          model: "users",
           key: "id",
         },
-      },
-      community_owner: {
-        type: DataTypes.INTEGER,
-        allowNull: true,
       },
       name: {
         type: DataTypes.STRING(255),
         allowNull: false,
       },
-      type: {
-        type: DataTypes.STRING(255),
-        allowNull: false,
+      organization_type: {
+        type: DataTypes.STRING(100),
+        allowNull: true,
       },
       description: {
         type: DataTypes.TEXT,
@@ -40,6 +36,12 @@ module.exports = function (sequelize, DataTypes) {
       status: {
         type: DataTypes.STRING(255),
         allowNull: false,
+        defaultValue: "active",
+      },
+      join_code: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+        unique: true,
       },
     },
     {
@@ -54,9 +56,9 @@ module.exports = function (sequelize, DataTypes) {
           fields: [{ name: "id" }],
         },
         {
-          name: "cohort_id",
+          name: "idx_owner_id",
           using: "BTREE",
-          fields: [{ name: "cohort_id" }],
+          fields: [{ name: "owner_id" }],
         },
       ],
     },

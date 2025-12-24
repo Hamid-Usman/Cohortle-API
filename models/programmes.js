@@ -42,6 +42,15 @@ module.exports = function (sequelize, DataTypes) {
         allowNull: false,
         defaultValue: "draft",
       },
+      type: {
+        type: DataTypes.ENUM("scheduled", "structured", "self_paced"),
+        defaultValue: "scheduled",
+        allowNull: false,
+      },
+      settings: {
+        type: DataTypes.JSON,
+        allowNull: true,
+      },
       created_by: {
         type: DataTypes.INTEGER,
         allowNull: true,

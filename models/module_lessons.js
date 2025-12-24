@@ -13,7 +13,7 @@ module.exports = function (sequelize, DataTypes) {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-          model: "community_modules",
+          model: "programme_modules",
           key: "id",
         },
       },
@@ -29,9 +29,32 @@ module.exports = function (sequelize, DataTypes) {
         type: DataTypes.TEXT,
         allowNull: true,
       },
+      text: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
+      video_guid: {
+        type: DataTypes.STRING(255),
+        allowNull: true,
+      },
       order_number: {
         type: DataTypes.INTEGER,
         allowNull: false,
+      },
+      estimated_duration: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        defaultValue: 0,
+      },
+      is_required: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: true,
+      },
+      status: {
+        type: DataTypes.STRING(100),
+        allowNull: false,
+        defaultValue: "draft",
       },
     },
     {

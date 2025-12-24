@@ -48,6 +48,60 @@ const POST_REPLY = {
   PEOPLE_MENTIONED: "people_mentioned",
 };
 
+const PROGRAMME_TYPES = {
+  SCHEDULED: "scheduled",
+  STRUCTURED: "structured",
+  SELF_PACED: "self_paced",
+};
+
+const PROGRAMME_STATUSES = {
+  DRAFT: "draft",
+  ACTIVE: "active",
+  COMPLETED: "completed",
+  ARCHIVED: "archived",
+};
+
+const MEMBER_ROLES = {
+  LEARNER: "learner",
+  INSTRUCTOR: "instructor",
+  FACILITATOR: "facilitator",
+};
+
+const NOTIFICATION_TYPES = {
+  ANNOUNCEMENT: "announcement",
+  DISCUSSION: "discussion",
+  LESSON: "lesson",
+  PROGRESS: "progress",
+  SYSTEM: "system",
+};
+
+const ANNOUNCEMENT_PRIORITIES = {
+  LOW: "low",
+  MEDIUM: "medium",
+  HIGH: "high",
+};
+
+const ACTIVITY_ACTION_TYPES = {
+  CREATE: "create",
+  UPDATE: "update",
+  DELETE: "delete",
+  ENROLL: "enroll",
+  COMPLETE: "complete",
+  COMMENT: "comment",
+  ANNOUNCE: "announce",
+};
+
+const ACTIVITY_ENTITY_TYPES = {
+  COMMUNITY: "community",
+  PROGRAMME: "programme",
+  COHORT: "cohort",
+  MODULE: "module",
+  LESSON: "lesson",
+  MEMBER: "member",
+  DISCUSSION: "discussion",
+  ANNOUNCEMENT: "announcement",
+};
+
 module.exports = {
   USER_STATUSES,
   COHORT_STATUSES,
@@ -59,4 +113,11 @@ module.exports = {
   LESSON_STATUSES,
   POST_STATUSES,
   POST_REPLY,
+  PROGRAMME_TYPES,
+  PROGRAMME_STATUSES,
+  MEMBER_ROLES,
+  NOTIFICATION_TYPES,
+  ANNOUNCEMENT_PRIORITIES,
+  ACTIVITY_ACTION_TYPES,
+  ACTIVITY_ENTITY_TYPES,
 };

@@ -10,16 +10,20 @@ module.exports = function (app) {
       try {
         const { lesson_id } = req.params;
         const { user_id } = req;
+        const { cohort_id } = req.body; // Cohort context should be provided
+
+        if (!cohort_id) {
+          return res.status(400).json({ error: true, message: "cohort_id is required" });
+        }
 
         const sdk = new BackendSDK();
 
-        // 🔹 Find the lesson and cohort
+        // 🔹 Find the lesson and verify it belongs to the programme of the cohort
         const lesson = (
           await sdk.rawQuery(
-            `SELECT ml.*, cm.community_id, c.cohort_id
+            `SELECT ml.*, pm.programme_id
                 FROM module_lessons ml
-                JOIN community_modules cm ON ml.module_id = cm.id
-                JOIN communities c ON cm.community_id = c.id
+                JOIN programme_modules pm ON ml.module_id = pm.id
                 WHERE ml.id = ${lesson_id}`,
           )
         )[0];
@@ -35,7 +39,7 @@ module.exports = function (app) {
         const isMember = await ensureLearnerInCohort(
           sdk,
           user_id,
-          lesson.cohort_id,
+          cohort_id,
         );
         if (!isMember) {
           return res.status(403).json({
@@ -47,23 +51,21 @@ module.exports = function (app) {
         // 🔹 Mark completion
         sdk.setTable("lesson_progress");
         const existing = await sdk.get({
-          learner_id: user_id,
+          user_id,
           lesson_id,
-          cohort_id: lesson.cohort_id,
+          cohort_id: cohort_id,
         });
 
         if (existing.length) {
-          await sdk.update(existing[0].id, {
+          await sdk.update({
             completed: true,
-            completed_at: new Date(),
-          });
+          }, existing[0].id);
         } else {
-          await sdk.create({
-            learner_id: user_id,
+          await sdk.insert({
+            user_id,
             lesson_id,
-            cohort_id: lesson.cohort_id,
+            cohort_id: cohort_id,
             completed: true,
-            completed_at: new Date(),
           });
         }
 
@@ -81,5 +83,9 @@ module.exports = function (app) {
     },
   );
 
-  return [];
+  async function ensureLearnerInCohort(sdk, user_id, cohort_id) {
+    sdk.setTable("cohort_members");
+    const member = await sdk.get({ user_id, cohort_id });
+    return member.length > 0;
+  }
 };
