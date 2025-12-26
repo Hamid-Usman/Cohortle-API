@@ -69,22 +69,25 @@ module.exports = function (app) {
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],
     async function (req, res) {
       try {
-        let { type, name, description, codePrefix = "", thumbnail } = req.body;
-        if (!type) type = COMMUNITY_TYPES[0];
+        let { type, name, description, goals, referral, codePrefix = "", thumbnail } = req.body;
+        if (!type || type === '') type = COMMUNITY_TYPES[0]; // Default to first type if empty/null/undefined
+
         const validationResult = await ValidationService.validateObject(
           {
             name: "required|string",
             type: `in:${COMMUNITY_TYPES.join(",")}`,
-            // type: `required|in:${Object.values(COMMUNITY_SUB_TYPES).join(",")}`,
             description: "required|string",
+            goals: "string",
+            referral: "string",
             // thumbnail: "url",
           },
           {
             name,
             type,
-            // sub_type,
             codePrefix,
             description,
+            goals,
+            referral,
             thumbnail,
           },
         );
@@ -100,9 +103,11 @@ module.exports = function (app) {
         sdk.setTable("communities");
         const community_id = await sdk.insert({
           name,
-          type: "course",
+          type,
           // sub_type,
           description,
+          goals,
+          referral,
           thumbnail,
           unique_code,
           owner_id: req.user_id,
