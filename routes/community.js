@@ -69,7 +69,8 @@ module.exports = function (app) {
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],
     async function (req, res) {
       try {
-        const { type, name, description, thumbnail } = req.body;
+        let { type, name, description, codePrefix = "", thumbnail } = req.body;
+        if (!type) type = COMMUNITY_TYPES[0];
         const validationResult = await ValidationService.validateObject(
           {
             name: "required|string",
@@ -82,6 +83,7 @@ module.exports = function (app) {
             name,
             type,
             // sub_type,
+            codePrefix,
             description,
             thumbnail,
           },
@@ -91,6 +93,9 @@ module.exports = function (app) {
 
         const sdk = new BackendSDK();
 
+        // Generate unique code (8 chars alphanumeric)
+        const generated_code = Math.random().toString(36).substring(2, 10).toUpperCase();
+        const unique_code = codePrefix + generated_code;
 
         sdk.setTable("communities");
         const community_id = await sdk.insert({
@@ -99,6 +104,7 @@ module.exports = function (app) {
           // sub_type,
           description,
           thumbnail,
+          unique_code,
           owner_id: req.user_id,
           status: COMMUNITY_STATUSES.DRAFT,
         });
@@ -107,6 +113,7 @@ module.exports = function (app) {
           error: false,
           message: "community created successfully",
           community_id,
+          unique_code,
         });
       } catch (err) {
         console.error(err);
@@ -131,18 +138,19 @@ module.exports = function (app) {
         let sql = "";
         if (role === "convener") {
           sql = `
-            SELECT 
-              c.id, c.name, c.type, c.description, c.thumbnail, c.status,
+            SELECT DISTINCT
+              c.id, c.name, c.type, c.description, c.thumbnail, c.status, c.unique_code,
               (SELECT COUNT(*) FROM programmes p WHERE p.community_id = c.id) AS programme_count
             FROM communities c
-            WHERE c.owner_id = ${user_id}
+            LEFT JOIN community_members cm ON c.id = cm.community_id
+            WHERE c.owner_id = ${user_id} OR cm.user_id = ${user_id}
             ORDER BY c.created_at DESC
           `;
         } else {
           // Learner
           sql = `
             SELECT 
-              c.id, c.name, c.type, c.description, c.thumbnail, c.status,
+              c.id, c.name, c.type, c.description, c.thumbnail, c.status, c.unique_code,
               (SELECT COUNT(*) FROM programmes p WHERE p.community_id = c.id) AS programme_count
             FROM communities c
             JOIN community_members cm ON c.id = cm.community_id
@@ -166,6 +174,132 @@ module.exports = function (app) {
         });
       }
     },
+  );
+
+  /**
+   * @swagger
+   * /v1/api/communities/join:
+   *   post:
+   *     summary: Join a community via unique code
+   *     tags: [Communities]
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - code
+   *             properties:
+   *               code:
+   *                 type: string
+   *     responses:
+   *       '200':
+   *         description: Joined community successfully
+   */
+  app.post(
+    "/v1/api/communities/join",
+    [UrlMiddleware, TokenMiddleware({ role: "learner" })],
+    async function (req, res) {
+      try {
+        const { code } = req.body;
+        const { user_id } = req;
+
+        const validationResult = await ValidationService.validateObject(
+          { code: "required|string" },
+          { code }
+        );
+        if (validationResult.error) return res.status(400).json(validationResult);
+
+        const sdk = new BackendSDK();
+
+        // Find community by code
+        const community = await sdk.rawQuery(`SELECT * FROM communities WHERE unique_code = '${code}' LIMIT 1`);
+
+        if (community.length === 0) {
+          return res.status(404).json({ error: true, message: "Invalid community code" });
+        }
+
+        const community_id = community[0].id;
+
+        // Check if already member
+        sdk.setTable("community_members");
+        const existing = await sdk.get({ community_id, user_id });
+
+        if (existing.length > 0) {
+          return res.status(400).json({ error: true, message: "You are already a member of this community" });
+        }
+
+        // Add member
+        await sdk.insert({
+          community_id,
+          user_id,
+          role: "learner",
+          status: "active"
+        });
+
+        return res.status(200).json({
+          error: false,
+          message: "Joined community successfully",
+          community_id
+        });
+
+      } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: true, message: "Something went wrong" });
+      }
+    }
+  );
+
+  /**
+   * @swagger
+   * /v1/api/communities/joined:
+   *   get:
+   *     summary: Get communities the logged-in user has joined
+   *     tags: [Communities]
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       '200':
+   *         description: Communities fetched successfully
+   */
+  app.get(
+    "/v1/api/communities/joined",
+    [UrlMiddleware, TokenMiddleware({ role: "convener|learner" })],
+    async function (req, res) {
+      try {
+        const { user_id } = req;
+        const sdk = new BackendSDK();
+
+        const sql = `
+            SELECT 
+              c.id, c.name, c.type, c.description, c.thumbnail, c.status, c.unique_code,
+              cm.role as member_role,
+              cm.created_at as joined_at,
+              (SELECT COUNT(*) FROM programmes p WHERE p.community_id = c.id) AS programme_count
+            FROM communities c
+            JOIN community_members cm ON c.id = cm.community_id
+            WHERE cm.user_id = ${user_id}
+            ORDER BY cm.created_at DESC
+        `;
+
+        const communities = await sdk.rawQuery(sql);
+
+        return res.status(200).json({
+          error: false,
+          message: "Joined communities fetched successfully",
+          communities,
+        });
+      } catch (err) {
+        console.error(err);
+        res.status(500).json({
+          error: true,
+          message: "something went wrong",
+        });
+      }
+    }
   );
 
   /**
@@ -297,7 +431,7 @@ module.exports = function (app) {
     async function (req, res) {
       try {
         const { community_id } = req.params;
-        const { type, name, description, status, thumbnail } =
+        const { type, name, description, goals, referral, status, thumbnail } =
           req.body;
 
         const validationResult = await ValidationService.validateObject(
@@ -307,6 +441,8 @@ module.exports = function (app) {
             type: `in:${COMMUNITY_TYPES.join(",")}`,
             // sub_type: `in:${Object.values(COMMUNITY_SUB_TYPES).join(",")}`,
             description: "string",
+            goals: "string",
+            referral: "string",
             status: `in:${Object.values(COMMUNITY_STATUSES).join(",")}`,
             thumbnail: "url",
           },
@@ -316,6 +452,8 @@ module.exports = function (app) {
             type,
             // sub_type,
             description,
+            goals,
+            referral,
             status,
             thumbnail,
           },
@@ -344,8 +482,9 @@ module.exports = function (app) {
           {
             ...(name !== undefined ? { name } : {}),
             ...(type !== undefined ? { type } : {}),
-            ...(sub_type !== undefined ? { sub_type } : {}),
             ...(description !== undefined ? { description } : {}),
+            ...(goals !== undefined ? { goals } : {}),
+            ...(referral !== undefined ? { referral } : {}),
             ...(status !== undefined ? { status } : {}),
             ...(thumbnail !== undefined ? { thumbnail } : {}),
           },
@@ -406,22 +545,41 @@ module.exports = function (app) {
 
         const sdk = new BackendSDK();
 
-        // First, get all modules for this community
-        sdk.setTable("community_modules");
-        const modules = await sdk.get({ community_id });
+        // 1. Get all programmes for this community
+        sdk.setTable("programmes");
+        const programmes = await sdk.get({ community_id });
 
-        // Delete all lessons for each module
-        if (modules.length > 0) {
-          const moduleIds = modules.map((m) => m.id);
-          sdk.setTable("module_lessons");
+        if (programmes.length > 0) {
+          const programmeIds = programmes.map((p) => p.id);
+
+          // 2. Get all modules for these programmes
+          sdk.setTable("programme_modules");
+          const modules = await sdk.rawQuery(
+            `SELECT * FROM programme_modules WHERE programme_id IN (${programmeIds.join(",")})`
+          );
+
+          if (modules.length > 0) {
+            const moduleIds = modules.map((m) => m.id);
+
+            // 3. Delete all lessons for these modules
+            sdk.setTable("module_lessons");
+            await sdk.rawQuery(
+              `DELETE FROM module_lessons WHERE module_id IN (${moduleIds.join(",")})`
+            );
+
+            // 4. Delete all modules
+            sdk.setTable("programme_modules");
+            await sdk.rawQuery(
+              `DELETE FROM programme_modules WHERE programme_id IN (${programmeIds.join(",")})`
+            );
+          }
+
+          // 5. Delete all programmes
+          sdk.setTable("programmes");
           await sdk.rawQuery(
-            `DELETE FROM module_lessons WHERE module_id IN (${moduleIds.join(",")})`,
+            `DELETE FROM programmes WHERE id IN (${programmeIds.join(",")})`
           );
         }
-
-        // Delete all modules for this community
-        sdk.setTable("community_modules");
-        await sdk.deleteWhere({ community_id });
 
         // Finally, delete the community
         sdk.setTable("communities");
@@ -443,6 +601,152 @@ module.exports = function (app) {
         });
       }
     },
+  );
+
+  /**
+   * @swagger
+   * /v1/api/communities/{community_id}/members:
+   *   get:
+   *     summary: Get all members of a community
+   *     tags: [Communities]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - name: community_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       '200':
+   *         description: Members fetched successfully
+   */
+  app.get(
+    "/v1/api/communities/:community_id/members",
+    [UrlMiddleware, TokenMiddleware({ role: "convener|learner" })],
+    async function (req, res) {
+      try {
+        const { community_id } = req.params;
+
+        const validationResult = await ValidationService.validateObject(
+          { community_id: "required|integer" },
+          { community_id }
+        );
+
+        if (validationResult.error) {
+          return res.status(400).json(validationResult);
+        }
+
+        const sdk = new BackendSDK();
+        const members = await sdk.rawQuery(`
+          SELECT 
+            u.id, 
+            u.first_name, 
+            u.last_name, 
+            u.email, 
+            u.profile_image,
+            cm.role,
+            cm.status,
+            cm.created_at AS joined_at,
+            cm.id AS membership_id 
+          FROM community_members cm
+          JOIN users u ON u.id = cm.user_id
+          WHERE cm.community_id = ${community_id}
+          ORDER BY cm.created_at DESC
+        `);
+
+        return res.status(200).json({
+          error: false,
+          message: "Members fetched successfully",
+          members,
+        });
+      } catch (err) {
+        console.error(err);
+        res.status(500).json({
+          error: true,
+          message: "something went wrong",
+        });
+      }
+    }
+  );
+
+  /**
+   * @swagger
+   * /v1/api/communities/{community_id}/members/{user_id}:
+   *   delete:
+   *     summary: Remove a member from a community
+   *     tags: [Communities]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - name: community_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *       - name: user_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       '200':
+   *         description: Member removed successfully
+   */
+  app.delete(
+    "/v1/api/communities/:community_id/members/:user_id",
+    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
+    async function (req, res) {
+      try {
+        const { community_id, user_id } = req.params;
+
+        const validationResult = await ValidationService.validateObject(
+          {
+            community_id: "required|integer",
+            user_id: "required|integer",
+          },
+          { community_id, user_id }
+        );
+
+        if (validationResult.error) {
+          return res.status(400).json(validationResult);
+        }
+
+        const sdk = new BackendSDK();
+
+        // Verify ownership
+        sdk.setTable("communities");
+        const community = (await sdk.get({ id: community_id }))[0];
+
+        if (!community) {
+          return res.status(404).json({
+            error: true,
+            message: "Community not found",
+          });
+        }
+
+        if (community.owner_id !== req.user_id) {
+          return res.status(403).json({
+            error: true,
+            message: "You do not have permission to remove members from this community",
+          });
+        }
+
+        sdk.setTable("community_members");
+        await sdk.deleteWhere({ community_id, user_id });
+
+        return res.status(200).json({
+          error: false,
+          message: "Member removed successfully",
+        });
+      } catch (err) {
+        console.error(err);
+        res.status(500).json({
+          error: true,
+          message: "something went wrong",
+        });
+      }
+    }
   );
 
   return [];

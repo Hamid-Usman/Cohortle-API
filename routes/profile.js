@@ -62,7 +62,7 @@ module.exports = function (app) {
             user_id: req.user_id,
             role: role,
           },
-          5 * 60 * 1000,
+          100 * 60 * 5000,
           process.env.JWT_SECRET,
         );
         return res.status(200).json({

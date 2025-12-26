@@ -13,7 +13,7 @@ const COMMUNITY_STATUSES = {
   PUBLISHED: "published",
 };
 
-const COMMUNITY_TYPES = ["course"];
+const COMMUNITY_TYPES = ["course", "public"];
 
 const COMMUNITY_SUB_TYPES = {
   SELF_PACED: "self_paced",
