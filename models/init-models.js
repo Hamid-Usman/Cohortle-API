@@ -12,6 +12,7 @@ var _discussions = require("./discussions");
 var _lessonProgress = require("./lessonProgress");
 var _lesson_schedule = require("./lesson_schedule");
 var _module_lessons = require("./module_lessons");
+var _lesson_comments = require("./lesson_comments");
 var _programme_progress = require("./programme_progress");
 var _programmes = require("./programmes");
 var _users = require("./users");
@@ -30,6 +31,7 @@ function initModels(sequelize) {
   var lessonProgress = _lessonProgress(sequelize, DataTypes);
   var lesson_schedule = _lesson_schedule(sequelize, DataTypes);
   var module_lessons = _module_lessons(sequelize, DataTypes);
+  var lesson_comments = _lesson_comments(sequelize, DataTypes);
   var programme_progress = _programme_progress(sequelize, DataTypes);
   var programmes = _programmes(sequelize, DataTypes);
   var users = _users(sequelize, DataTypes);
@@ -99,6 +101,14 @@ function initModels(sequelize) {
   lesson_schedule.belongsTo(cohorts, { as: "cohort", foreignKey: "cohort_id" });
   cohorts.hasMany(lesson_schedule, { as: "schedules", foreignKey: "cohort_id" });
 
+  // Lesson Comments
+  lesson_comments.belongsTo(module_lessons, { as: "lesson", foreignKey: "lesson_id" });
+  module_lessons.hasMany(lesson_comments, { as: "comments", foreignKey: "lesson_id" });
+  lesson_comments.belongsTo(users, { as: "user", foreignKey: "user_id" });
+  users.hasMany(lesson_comments, { as: "lesson_comments", foreignKey: "user_id" });
+  lesson_comments.belongsTo(cohorts, { as: "cohort", foreignKey: "cohort_id" });
+  cohorts.hasMany(lesson_comments, { as: "lesson_comments", foreignKey: "cohort_id" });
+
   // Activity Logs
   activity_logs.belongsTo(users, { as: "user", foreignKey: "user_id" });
   users.hasMany(activity_logs, { as: "activity_logs", foreignKey: "user_id" });
@@ -125,6 +135,7 @@ function initModels(sequelize) {
     lessonProgress,
     lesson_schedule,
     module_lessons,
+    lesson_comments,
     programme_progress,
     programmes,
     users,
