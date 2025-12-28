@@ -40,7 +40,7 @@ const swaggerOptions = {
       version: "1.0.0",
       description: "API documentation for Cohortle platform",
     },
-    servers: [{ url: "http://localhost:3048" }],
+    servers: [{ url: "http://localhost:8000" }, { url: process.env.VPS_ADDRESS }],
     components: {
       securitySchemes: {
         bearerAuth: {
@@ -116,7 +116,7 @@ app.use("/uploads", (err, req, res, next) => {
 // =====================
 // Start Server
 // =====================
-const PORT = process.env.NODE_PORT;
+const PORT = 8000
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
 
 module.exports = app;
