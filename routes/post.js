@@ -7,6 +7,51 @@ const { POST_STATUSES, POST_REPLY } = require("../utils/mappings");
 
 module.exports = function (app) {
   // create post
+  /**
+   * @swagger
+   * /v1/api/posts:
+   *   post:
+   *     summary: Create a new post
+   *     tags: [Posts]
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - text
+   *               - can_reply
+   *             properties:
+   *               text:
+   *                 type: string
+   *               media_1:
+   *                 type: string
+   *               media_2:
+   *                 type: string
+   *               media_3:
+   *                 type: string
+   *               media_4:
+   *                 type: string
+   *               community_ids:
+   *                 type: string
+   *                 description: Comma-separated list of community IDs
+   *               mentioned_ids:
+   *                 type: string
+   *                 description: Comma-separated list of user IDs
+   *               can_reply:
+   *                 type: string
+   *                 enum: [everyone, nobody, people_mentioned]
+   *     responses:
+   *       200:
+   *         description: Post created successfully
+   *       400:
+   *         description: Validation error
+   *       500:
+   *         description: Internal server error
+   */
   app.post(
     "/v1/api/posts",
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],
@@ -80,6 +125,20 @@ module.exports = function (app) {
     },
   );
 
+  /**
+   * @swagger
+   * /v1/api/posts:
+   *   get:
+   *     summary: Get all posts
+   *     tags: [Posts]
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: List of posts with user data
+   *       500:
+   *         description: Internal server error
+   */
   app.get(
     "/v1/api/posts",
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],
@@ -97,10 +156,10 @@ module.exports = function (app) {
 
             const userData = user
               ? {
-                  first_name: user.first_name,
-                  last_name: user.last_name,
-                  email: user.email,
-                }
+                first_name: user.first_name,
+                last_name: user.last_name,
+                email: user.email,
+              }
               : null;
 
             return {
@@ -126,6 +185,28 @@ module.exports = function (app) {
     },
   );
 
+  /**
+   * @swagger
+   * /v1/posts/{post_id}:
+   *   get:
+   *     summary: Get a single post by ID
+   *     tags: [Posts]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: post_id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       200:
+   *         description: Post retrieved successfully
+   *       404:
+   *         description: Post not found
+   *       500:
+   *         description: Internal server error
+   */
   app.get(
     "/v1/posts/:post_id",
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],
@@ -172,10 +253,10 @@ module.exports = function (app) {
 
         const userData = user
           ? {
-              first_name: user.first_name,
-              last_name: user.last_name,
-              email: user.email,
-            }
+            first_name: user.first_name,
+            last_name: user.last_name,
+            email: user.email,
+          }
           : null;
 
         // ✅ Prevent caching
@@ -201,6 +282,41 @@ module.exports = function (app) {
     },
   );
 
+  /**
+   * @swagger
+   * /v1/post/{post_id}/comments:
+   *   post:
+   *     summary: Add a comment to a post
+   *     tags: [Posts]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: post_id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - text
+   *             properties:
+   *               text:
+   *                 type: string
+   *               media_1:
+   *                 type: string
+   *     responses:
+   *       200:
+   *         description: Comment added successfully
+   *       400:
+   *         description: Validation error
+   *       500:
+   *         description: Internal server error
+   */
   app.post(
     "/v1/post/:post_id/comments",
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],
@@ -248,9 +364,31 @@ module.exports = function (app) {
     },
   );
 
+  /**
+   * @swagger
+   * /v1/post/{post_id}/comments:
+   *   get:
+   *     summary: Get all comments for a post
+   *     tags: [Posts]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: post_id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       200:
+   *         description: List of comments with user data
+   *       400:
+   *         description: Validation error
+   *       500:
+   *         description: Internal server error
+   */
   app.get(
     "/v1/post/:post_id/comments",
-    [UrlMiddleware, TokenMiddleware()],
+    [UrlMiddleware, TokenMiddleware({ role: "convener|learner" })],
     async function (req, res) {
       try {
         const { post_id } = req.params;
@@ -287,9 +425,9 @@ module.exports = function (app) {
           ...comment,
           user: userMap[comment.commented_by]
             ? {
-                first_name: userMap[comment.commented_by].first_name,
-                last_name: userMap[comment.commented_by].last_name,
-              }
+              first_name: userMap[comment.commented_by].first_name,
+              last_name: userMap[comment.commented_by].last_name,
+            }
             : null,
         }));
         console.log(commentWithUser);
@@ -308,6 +446,33 @@ module.exports = function (app) {
     },
   );
 
+  /**
+   * @swagger
+   * /v1/post/{post_id}/comment/{comment_id}:
+   *   delete:
+   *     summary: Delete a comment
+   *     tags: [Posts]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: post_id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *       - in: path
+   *         name: comment_id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       200:
+   *         description: Comment deleted successfully
+   *       400:
+   *         description: Validation error
+   *       500:
+   *         description: Internal server error
+   */
   app.delete(
     "/v1/post/:post_id/comment/:comment_id",
     [UrlMiddleware],

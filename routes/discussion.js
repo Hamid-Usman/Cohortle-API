@@ -7,18 +7,16 @@ module.exports = function (app) {
     // Create discussion
     app.post(
         "/v1/api/discussions",
-        [UrlMiddleware, TokenMiddleware()],
+        [UrlMiddleware, TokenMiddleware({ role: 'convener|learner' })],
         async function (req, res) {
             try {
-                const { programme_id, cohort_id, lesson_id, title, description } = req.body;
+                const { cohort_id, title, description } = req.body;
 
                 const validationResult = await ValidationService.validateObject(
                     {
                         title: "required|string",
                         description: "string",
-                        programme_id: "integer",
-                        cohort_id: "integer",
-                        lesson_id: "integer",
+                        cohort_id: "required|integer",
                     },
                     req.body,
                 );
@@ -30,9 +28,7 @@ module.exports = function (app) {
                 const sdk = new BackendSDK();
                 sdk.setTable("discussions");
                 const discussion_id = await sdk.insert({
-                    programme_id,
                     cohort_id,
-                    lesson_id,
                     title,
                     description,
                     created_by: req.user_id,
@@ -43,7 +39,6 @@ module.exports = function (app) {
                 activitySdk.setTable("activity_logs");
                 await activitySdk.insert({
                     user_id: req.user_id,
-                    programme_id,
                     cohort_id,
                     action_type: "create",
                     entity_type: "discussion",
@@ -66,25 +61,56 @@ module.exports = function (app) {
     // Get discussions
     app.get(
         "/v1/api/discussions",
-        [UrlMiddleware, TokenMiddleware()],
+        [UrlMiddleware, TokenMiddleware({ role: 'convener|learner' })],
         async function (req, res) {
             try {
-                const { programme_id, cohort_id, lesson_id } = req.query;
+                const { cohort_id } = req.query;
+
+                const validationResult = await ValidationService.validateObject(
+                    {
+                        cohort_id: "required|integer",
+                    },
+                    req.query
+                );
+
+                if (validationResult.error) {
+                    return res.status(400).json(validationResult);
+                }
 
                 const sdk = new BackendSDK();
-                let query = {};
-                if (programme_id) query.programme_id = programme_id;
-                if (cohort_id) query.cohort_id = cohort_id;
-                if (lesson_id) query.lesson_id = lesson_id;
+                let query = { cohort_id };
 
                 const sdkTable = new BackendSDK();
                 sdkTable.setTable("discussions");
                 const discussions = await sdkTable.get(query);
 
+                // Fetch user data for each discussion
+                const userSdk = new BackendSDK();
+                userSdk.setTable("users");
+
+                const discussionsWithUsers = await Promise.all(
+                    discussions.map(async (discussion) => {
+                        const [user] = await userSdk.get({ id: discussion.created_by });
+
+                        const userData = user
+                            ? {
+                                first_name: user.first_name,
+                                last_name: user.last_name,
+                                profile_image: user.profile_image,
+                            }
+                            : null;
+
+                        return {
+                            ...discussion,
+                            user: userData,
+                        };
+                    })
+                );
+
                 return res.status(200).json({
                     error: false,
                     message: "Discussions fetched successfully",
-                    discussions,
+                    discussions: discussionsWithUsers,
                 });
             } catch (err) {
                 console.error(err);
@@ -96,7 +122,7 @@ module.exports = function (app) {
     // Add comment to discussion
     app.post(
         "/v1/api/discussions/:discussion_id/comments",
-        [UrlMiddleware, TokenMiddleware()],
+        [UrlMiddleware, TokenMiddleware({ role: 'convener|learner' })],
         async function (req, res) {
             try {
                 const { discussion_id } = req.params;
@@ -134,5 +160,60 @@ module.exports = function (app) {
                 res.status(500).json({ error: true, message: "Internal server error" });
             }
         },
+    );
+
+    // Get comments for a discussion
+    app.get(
+        "/v1/api/discussions/:discussion_id/comments",
+        [UrlMiddleware, TokenMiddleware({ role: 'convener|learner' })],
+        async function (req, res) {
+            try {
+                const { discussion_id } = req.params;
+
+                const validationResult = await ValidationService.validateObject(
+                    { discussion_id: "required|integer" },
+                    { discussion_id }
+                );
+
+                if (validationResult.error) {
+                    return res.status(400).json(validationResult);
+                }
+
+                const sdk = new BackendSDK();
+                sdk.setTable("discussion_comments");
+                const comments = await sdk.get({ discussion_id });
+
+                const userSdk = new BackendSDK();
+                userSdk.setTable("users");
+
+                const commentsWithUsers = await Promise.all(
+                    comments.map(async (comment) => {
+                        const [user] = await userSdk.get({ id: comment.user_id });
+
+                        const userData = user
+                            ? {
+                                first_name: user.first_name,
+                                last_name: user.last_name,
+                                profile_image: user.profile_image,
+                            }
+                            : null;
+
+                        return {
+                            ...comment,
+                            user: userData,
+                        };
+                    })
+                );
+
+                return res.status(200).json({
+                    error: false,
+                    message: "Comments fetched successfully",
+                    comments: commentsWithUsers,
+                });
+            } catch (err) {
+                console.error(err);
+                res.status(500).json({ error: true, message: "Internal server error" });
+            }
+        }
     );
 };

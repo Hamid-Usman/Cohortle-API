@@ -65,7 +65,7 @@ module.exports = function (app) {
     // Create cohort announcement
     app.post(
         "/v1/api/cohorts/:cohort_id/announcements",
-        [UrlMiddleware, TokenMiddleware({ role: "instructor" })],
+        [UrlMiddleware, TokenMiddleware({ role: "convener" })],
         async function (req, res) {
             try {
                 const { cohort_id } = req.params;
@@ -123,7 +123,7 @@ module.exports = function (app) {
     // Get announcements for a programme
     app.get(
         "/v1/api/programmes/:programme_id/announcements",
-        [UrlMiddleware, TokenMiddleware()],
+        [UrlMiddleware, TokenMiddleware({ role: "convener|learner" })],
         async function (req, res) {
             try {
                 const { programme_id } = req.params;
@@ -155,7 +155,7 @@ module.exports = function (app) {
     // Get announcements for a cohort
     app.get(
         "/v1/api/cohorts/:cohort_id/announcements",
-        [UrlMiddleware, TokenMiddleware()],
+        [UrlMiddleware, TokenMiddleware({ role: "convener|learner" })],
         async function (req, res) {
             try {
                 const { cohort_id } = req.params;
@@ -185,7 +185,7 @@ module.exports = function (app) {
     // Delete announcement
     app.delete(
         "/v1/api/announcements/:announcement_id",
-        [UrlMiddleware, TokenMiddleware({ role: "instructor" })],
+        [UrlMiddleware, TokenMiddleware({ role: "convener" })],
         async function (req, res) {
             try {
                 const { announcement_id } = req.params;
