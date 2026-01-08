@@ -2,6 +2,8 @@ const BackendSDK = require("../core/BackendSDK");
 const TokenMiddleware = require("../middleware/TokenMiddleware");
 const UrlMiddleware = require("../middleware/UrlMiddleware");
 const ValidationService = require("../services/ValidationService");
+const { upload, uploadToBunny, deleteFromBunny, getPlaybackUrl } = require("../config/bunnyStream");
+
 const {
   COMMUNITY_STATUSES,
   COMMUNITY_TYPES,
@@ -12,54 +14,103 @@ const {
 
 module.exports = function (app) {
   // create community
+  /**
+   * @swagger
+   * /v1/api/communities:
+   *   post:
+   *     summary: Create a community
+   *     tags: [Communities]
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - name
+   *               - sub_type
+   *             properties:
+   *               name:
+   *                 type: string
+   *               type:
+   *                 type: string
+   *               description:
+   *                 type: string
+   *               thumbnail:
+   *                 type: string
+   *     responses:
+   *       '201':
+   *         description: Community created successfully
+   *   get:
+   *     summary: Get all communities
+   *     tags: [Communities]
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       '200':
+   *         description: List of communities
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 communities:
+   *                   type: array
+   *                   items:
+   *                     $ref: '#/components/schemas/Community'
+   */
+
+
+
   app.post(
-    "/v1/api/cohorts/:cohort_id/communities",
+    "/v1/api/communities",
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],
     async function (req, res) {
-      try {        const { cohort_id } = req.params;
-        const { type, sub_type, name, description, thumbnail } = req.body;
+      try {
+        let { type, name, description, goals, referral, codePrefix = "", thumbnail } = req.body;
+        if (!type || type === '') type = COMMUNITY_TYPES[0]; // Default to first type if empty/null/undefined
+
         const validationResult = await ValidationService.validateObject(
           {
-            cohort_id: "required|integer",
             name: "required|string",
             type: `in:${COMMUNITY_TYPES.join(",")}`,
-            sub_type: `required|in:${Object.values(COMMUNITY_SUB_TYPES).join(",")}`,
             description: "required|string",
-            thumbnail: "url",
+            goals: "string",
+            referral: "string",
+            // thumbnail: "url",
           },
           {
-            cohort_id,
             name,
             type,
-            sub_type,
+            codePrefix,
             description,
+            goals,
+            referral,
             thumbnail,
-          }
+          },
         );
         if (validationResult.error)
           return res.status(400).json(validationResult);
 
         const sdk = new BackendSDK();
 
-        sdk.setTable("cohorts");
-        const cohort = (await sdk.get({ id: cohort_id }))[0];
-
-        if (!cohort) {
-          return res.status(404).json({
-            error: true,
-            message: "cohort not found",
-          });
-        }
+        // Generate unique code (8 chars alphanumeric)
+        const generated_code = Math.random().toString(36).substring(2, 10).toUpperCase();
+        const unique_code = codePrefix + generated_code;
 
         sdk.setTable("communities");
         const community_id = await sdk.insert({
-          cohort_id,
           name,
           type,
-          sub_type,
+          // sub_type,
           description,
+          goals,
+          referral,
           thumbnail,
-          community_owner: req.user_id,
+          unique_code,
+          owner_id: req.user_id,
           status: COMMUNITY_STATUSES.DRAFT,
         });
 
@@ -67,6 +118,7 @@ module.exports = function (app) {
           error: false,
           message: "community created successfully",
           community_id,
+          unique_code,
         });
       } catch (err) {
         console.error(err);
@@ -76,60 +128,178 @@ module.exports = function (app) {
           message: "something went wrong",
         });
       }
-    }
+    },
   );
 
-  // get communities
+  // get communities for both users
   app.get(
-    "/v1/api/cohorts/:cohort_id/communities",
-    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
+    "/v1/api/communities",
+    [UrlMiddleware, TokenMiddleware({ role: "learner|convener" })],
     async function (req, res) {
       try {
-        const { cohort_id } = req.params;
-
-        const validationResult = await ValidationService.validateObject(
-          {
-            cohort_id: "required|integer",
-          },
-          {
-            cohort_id,
-          }
-        );
-        if (validationResult.error)
-          return res.status(400).json(validationResult);
-
+        const { user_id, role } = req; // now available from TokenMiddleware
         const sdk = new BackendSDK();
-        const communities = await sdk.rawQuery(`
-          SELECT 
-            c.cohort_id,
-            c.id, 
-            c.name, 
-            c.type,
-            c.description,
-            COUNT(cm.id) AS modules
-          FROM 
-            communities c
-          LEFT JOIN 
-            community_modules cm ON cm.community_id = c.id
-          WHERE 
-            c.cohort_id = ${cohort_id}
-          GROUP BY 
-            c.cohort_id,
-            c.id, 
-            c.name,
-            c.type,
-            c.description;
-          `);
+
+        let sql = "";
+        if (role === "convener") {
+          sql = `
+            SELECT DISTINCT
+              c.id, c.name, c.type, c.description, c.thumbnail, c.status, c.unique_code,
+              (SELECT COUNT(*) FROM programmes p WHERE p.community_id = c.id) AS programme_count
+            FROM communities c
+            LEFT JOIN community_members cm ON c.id = cm.community_id
+            WHERE c.owner_id = ${user_id} OR cm.user_id = ${user_id}
+            ORDER BY c.created_at DESC
+          `;
+        } else {
+          // Learner
+          sql = `
+            SELECT 
+              c.id, c.name, c.type, c.description, c.thumbnail, c.status, c.unique_code,
+              (SELECT COUNT(*) FROM programmes p WHERE p.community_id = c.id) AS programme_count
+            FROM communities c
+            JOIN community_members cm ON c.id = cm.community_id
+            WHERE cm.user_id = ${user_id}
+            ORDER BY c.created_at DESC
+          `;
+        }
+
+        const communities = await sdk.rawQuery(sql);
 
         return res.status(200).json({
           error: false,
-          message: "communities successfully",
+          message: "Communities fetched successfully",
           communities,
         });
       } catch (err) {
         console.error(err);
-        res.status(500);
-        res.json({
+        res.status(500).json({
+          error: true,
+          message: "Something went wrong",
+        });
+      }
+    },
+  );
+
+  /**
+   * @swagger
+   * /v1/api/communities/join:
+   *   post:
+   *     summary: Join a community via unique code
+   *     tags: [Communities]
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - code
+   *             properties:
+   *               code:
+   *                 type: string
+   *     responses:
+   *       '200':
+   *         description: Joined community successfully
+   */
+  app.post(
+    "/v1/api/communities/join",
+    [UrlMiddleware, TokenMiddleware({ role: "learner" })],
+    async function (req, res) {
+      try {
+        const { code } = req.body;
+        const { user_id } = req;
+
+        const validationResult = await ValidationService.validateObject(
+          { code: "required|string" },
+          { code }
+        );
+        if (validationResult.error) return res.status(400).json(validationResult);
+
+        const sdk = new BackendSDK();
+
+        // Find community by code
+        const community = await sdk.rawQuery(`SELECT * FROM communities WHERE unique_code = '${code}' LIMIT 1`);
+
+        if (community.length === 0) {
+          return res.status(404).json({ error: true, message: "Invalid community code" });
+        }
+
+        const community_id = community[0].id;
+
+        // Check if already member
+        sdk.setTable("community_members");
+        const existing = await sdk.get({ community_id, user_id });
+
+        if (existing.length > 0) {
+          return res.status(400).json({ error: true, message: "You are already a member of this community" });
+        }
+
+        // Add member
+        await sdk.insert({
+          community_id,
+          user_id,
+          role: "learner",
+          status: "active"
+        });
+
+        return res.status(200).json({
+          error: false,
+          message: "Joined community successfully",
+          community_id
+        });
+
+      } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: true, message: "Something went wrong" });
+      }
+    }
+  );
+
+  /**
+   * @swagger
+   * /v1/api/communities/joined:
+   *   get:
+   *     summary: Get communities the logged-in user has joined
+   *     tags: [Communities]
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       '200':
+   *         description: Communities fetched successfully
+   */
+  app.get(
+    "/v1/api/communities/joined",
+    [UrlMiddleware, TokenMiddleware({ role: "convener|learner" })],
+    async function (req, res) {
+      try {
+        const { user_id } = req;
+        const sdk = new BackendSDK();
+
+        const sql = `
+            SELECT 
+              c.id, c.name, c.type, c.description, c.thumbnail, c.status, c.unique_code,
+              cm.role as member_role,
+              cm.created_at as joined_at,
+              (SELECT COUNT(*) FROM programmes p WHERE p.community_id = c.id) AS programme_count
+            FROM communities c
+            JOIN community_members cm ON c.id = cm.community_id
+            WHERE cm.user_id = ${user_id}
+            ORDER BY cm.created_at DESC
+        `;
+
+        const communities = await sdk.rawQuery(sql);
+
+        return res.status(200).json({
+          error: false,
+          message: "Joined communities fetched successfully",
+          communities,
+        });
+      } catch (err) {
+        console.error(err);
+        res.status(500).json({
           error: true,
           message: "something went wrong",
         });
@@ -137,53 +307,74 @@ module.exports = function (app) {
     }
   );
 
+  /**
+   * @swagger
+   * /v1/api/communities/{community_id}:
+   *   get:
+   *     summary: Get a community by ID
+   *     description: Fetch a single community with its modules and lessons.
+   *     tags: [Communities]
+   *     security:
+   *       - bearerAuth: []
+   *       - name: community_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       '200':
+   *         description: Community fetched successfully
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Community'
+   */
   // get community
   app.get(
-    "/v1/api/cohorts/:cohort_id/communities/:community_id",
-    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
+    "/v1/api/communities/:community_id",
+    [UrlMiddleware, TokenMiddleware({ role: "convener|learner" })],
     async function (req, res) {
       try {
-        const { cohort_id, community_id } = req.params;
+        const { community_id } = req.params;
+        const { user_id, role } = req;
 
         const validationResult = await ValidationService.validateObject(
           {
-            cohort_id: "required|integer",
             community_id: "required|integer",
           },
           {
-            cohort_id,
             community_id,
-          }
+          },
         );
         if (validationResult.error)
           return res.status(400).json(validationResult);
 
         const sdk = new BackendSDK();
+
+        // 🔹 If learner, ensure they belong to this community
+        if (role === "learner") {
+          sdk.setTable("community_members");
+          const membership = await sdk.get({ community_id, user_id });
+
+          if (!membership.length) {
+            return res.status(403).json({
+              error: true,
+              message: "Access denied — you are not part of this community.",
+            });
+          }
+        }
         sdk.setTable("communities");
 
-        const community = (await sdk.get({ cohort_id, id: community_id }))[0];
+        const community = (await sdk.get({ id: community_id }))[0];
         if (!community) {
           return res
             .status(404)
             .json({ error: true, message: "community not found" });
         }
 
-        sdk.setTable("community_modules");
-        let modules = await sdk.get({ community_id });
-
-        let lessons = [];
-        if (modules.length > 0) {
-          lessons = await sdk.rawQuery(
-            `SELECT * FROM module_lessons WHERE module_id IN (${modules.map((m) => m.id).join(",")})`
-          );
-
-          modules = modules.map((m) => {
-            const moduleLessons = lessons.filter((l) => l.module_id === m.id);
-            return { ...m, lessons: moduleLessons };
-          });
-        }
-
-        community.modules = modules;
+        sdk.setTable("programmes");
+        const programmes = await sdk.get({ community_id });
+        community.programmes = programmes;
 
         return res.status(200).json({
           error: false,
@@ -198,40 +389,79 @@ module.exports = function (app) {
           message: "something went wrong",
         });
       }
-    }
+    },
   );
 
+  /**
+   * @swagger
+   * /v1/api/communities/{community_id}:
+   *   put:
+   *     summary: Edit a community
+   *     description: Update a community's data. Only the community owner can edit.
+   *     tags: [Communities]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - name: community_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     requestBody:
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               name:
+   *                 type: string
+   *               type:
+   *                 type: string
+   *               sub_type:
+   *                 type: string
+   *               description:
+   *                 type: string
+   *               status:
+   *                 type: string
+   *               thumbnail:
+   *                 type: string
+   *     responses:
+   *       '200':
+   *         description: Community updated successfully
+   */
   // edit community
   app.put(
-    "/v1/api/cohorts/:cohort_id/communities/:community_id",
+    "/v1/api/communities/:community_id",
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],
     async function (req, res) {
       try {
-        const { cohort_id, community_id } = req.params;
-        const { type, sub_type, name, description, status, thumbnail } =
+        const { community_id } = req.params;
+        const { type, name, description, goals, referral, status, thumbnail } =
           req.body;
 
         const validationResult = await ValidationService.validateObject(
           {
-            cohort_id: "required|integer",
             community_id: "required|integer",
             name: "string",
             type: `in:${COMMUNITY_TYPES.join(",")}`,
-            sub_type: `in:${Object.values(COMMUNITY_SUB_TYPES).join(",")}`,
+            // sub_type: `in:${Object.values(COMMUNITY_SUB_TYPES).join(",")}`,
             description: "string",
+            goals: "string",
+            referral: "string",
             status: `in:${Object.values(COMMUNITY_STATUSES).join(",")}`,
             thumbnail: "url",
           },
           {
-            cohort_id,
             community_id,
             name,
             type,
-            sub_type,
+            // sub_type,
             description,
+            goals,
+            referral,
             status,
             thumbnail,
-          }
+          },
         );
         if (validationResult.error)
           return res.status(400).json(validationResult);
@@ -241,8 +471,7 @@ module.exports = function (app) {
 
         const community = (
           await sdk.get({
-            cohort_id: cohort_id,
-            community_owner: req.user_id,
+            owner_id: req.user_id,
             id: community_id,
           })
         )[0];
@@ -258,12 +487,13 @@ module.exports = function (app) {
           {
             ...(name !== undefined ? { name } : {}),
             ...(type !== undefined ? { type } : {}),
-            ...(sub_type !== undefined ? { sub_type } : {}),
             ...(description !== undefined ? { description } : {}),
+            ...(goals !== undefined ? { goals } : {}),
+            ...(referral !== undefined ? { referral } : {}),
             ...(status !== undefined ? { status } : {}),
             ...(thumbnail !== undefined ? { thumbnail } : {}),
           },
-          community_id
+          community_id,
         );
 
         return res.status(200).json({
@@ -278,36 +508,89 @@ module.exports = function (app) {
           message: "something went wrong",
         });
       }
-    }
+    },
   );
 
+  /**
+   * @swagger
+   * /v1/api/communities/{community_id}:
+   *   delete:
+   *     summary: Delete a community
+   *     description: Delete a community. Only the owner (convener) can delete.
+   *     tags: [Communities]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - name: community_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       '200':
+   *         description: Community deleted successfully
+   */
   // delete community
   app.delete(
-    "/v1/api/cohorts/:cohort_id/communities/:community_id",
+    "/v1/api/communities/:community_id",
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],
     async function (req, res) {
       try {
-        const { cohort_id, community_id } = req.params;
+        const { community_id } = req.params;
         const validationResult = await ValidationService.validateObject(
           {
-            cohort_id: "required|integer",
             community_id: "required|integer",
           },
           {
-            cohort_id,
             community_id,
-          }
+          },
         );
         if (validationResult.error)
           return res.status(400).json(validationResult);
 
         const sdk = new BackendSDK();
 
+        // 1. Get all programmes for this community
+        sdk.setTable("programmes");
+        const programmes = await sdk.get({ community_id });
+
+        if (programmes.length > 0) {
+          const programmeIds = programmes.map((p) => p.id);
+
+          // 2. Get all modules for these programmes
+          sdk.setTable("programme_modules");
+          const modules = await sdk.rawQuery(
+            `SELECT * FROM programme_modules WHERE programme_id IN (${programmeIds.join(",")})`
+          );
+
+          if (modules.length > 0) {
+            const moduleIds = modules.map((m) => m.id);
+
+            // 3. Delete all lessons for these modules
+            sdk.setTable("module_lessons");
+            await sdk.rawQuery(
+              `DELETE FROM module_lessons WHERE module_id IN (${moduleIds.join(",")})`
+            );
+
+            // 4. Delete all modules
+            sdk.setTable("programme_modules");
+            await sdk.rawQuery(
+              `DELETE FROM programme_modules WHERE programme_id IN (${programmeIds.join(",")})`
+            );
+          }
+
+          // 5. Delete all programmes
+          sdk.setTable("programmes");
+          await sdk.rawQuery(
+            `DELETE FROM programmes WHERE id IN (${programmeIds.join(",")})`
+          );
+        }
+
+        // Finally, delete the community
         sdk.setTable("communities");
         await sdk.deleteWhere({
           id: community_id,
-          cohort_id: cohort_id,
-          community_owner: req.user_id,
+          owner_id: req.user_id,
         });
 
         return res.status(200).json({
@@ -322,498 +605,148 @@ module.exports = function (app) {
           message: "something went wrong",
         });
       }
-    }
+    },
   );
 
-  // create module
-  app.post(
-    "/v1/api/communities/:community_id/modules",
-    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
-    async function (req, res) {
-      try {
-        const { community_id } = req.params;
-        const { title, order_number } = req.body;
-        const validationResult = await ValidationService.validateObject(
-          {
-            community_id: "required|integer",
-            title: "required|string",
-            order_number: "required|integer",
-          },
-          {
-            community_id,
-            title,
-            order_number,
-          }
-        );
-        if (validationResult.error)
-          return res.status(400).json(validationResult);
-
-        const sdk = new BackendSDK();
-
-        sdk.setTable("community_modules");
-        const module_id = await sdk.insert({
-          community_id,
-          title,
-          order_number,
-          status: MODULE_STATUSES.DRAFT,
-        });
-
-        return res.status(201).json({
-          error: false,
-          message: "module created successfully",
-          module_id,
-        });
-      } catch (err) {
-        console.error(err);
-        res.status(500);
-        res.json({
-          error: true,
-          message: "something went wrong",
-        });
-      }
-    }
-  );
-  
-  // Get modules for a community
+  /**
+   * @swagger
+   * /v1/api/communities/{community_id}/members:
+   *   get:
+   *     summary: Get all members of a community
+   *     tags: [Communities]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - name: community_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       '200':
+   *         description: Members fetched successfully
+   */
   app.get(
-    "/v1/api/communities/:community_id/modules",
-    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
+    "/v1/api/communities/:community_id/members",
+    [UrlMiddleware, TokenMiddleware({ role: "convener|learner" })],
     async function (req, res) {
       try {
         const { community_id } = req.params;
 
-        // Validate input
         const validationResult = await ValidationService.validateObject(
-          {
-            community_id: "required|integer",
-          },
-          {
-            community_id,
-          }
+          { community_id: "required|integer" },
+          { community_id }
         );
-        
+
         if (validationResult.error) {
           return res.status(400).json(validationResult);
         }
 
-        // First verify the community exists
         const sdk = new BackendSDK();
-        sdk.setTable("communities");
-        const communityExists = await sdk.get({ id: community_id });
-        
-        if (!communityExists || communityExists.length === 0) {
-          return res.status(404).json({ 
-            error: true, 
-            message: "Community not found" 
-          });
+        const members = await sdk.rawQuery(`
+          SELECT 
+            u.id, 
+            u.first_name, 
+            u.last_name, 
+            u.email, 
+            u.profile_image,
+            cm.role,
+            cm.status,
+            cm.created_at AS joined_at,
+            cm.id AS membership_id 
+          FROM community_members cm
+          JOIN users u ON u.id = cm.user_id
+          WHERE cm.community_id = ${community_id}
+          ORDER BY cm.created_at DESC
+        `);
+
+        return res.status(200).json({
+          error: false,
+          message: "Members fetched successfully",
+          members,
+        });
+      } catch (err) {
+        console.error(err);
+        res.status(500).json({
+          error: true,
+          message: "something went wrong",
+        });
+      }
+    }
+  );
+
+  /**
+   * @swagger
+   * /v1/api/communities/{community_id}/members/{user_id}:
+   *   delete:
+   *     summary: Remove a member from a community
+   *     tags: [Communities]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - name: community_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *       - name: user_id
+   *         in: path
+   *         required: true
+   *         schema:
+   *           type: integer
+   *     responses:
+   *       '200':
+   *         description: Member removed successfully
+   */
+  app.delete(
+    "/v1/api/communities/:community_id/members/:user_id",
+    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
+    async function (req, res) {
+      try {
+        const { community_id, user_id } = req.params;
+
+        const validationResult = await ValidationService.validateObject(
+          {
+            community_id: "required|integer",
+            user_id: "required|integer",
+          },
+          { community_id, user_id }
+        );
+
+        if (validationResult.error) {
+          return res.status(400).json(validationResult);
         }
 
-        // Get modules
-        const moduleSDK = new BackendSDK();
-        moduleSDK.setTable("community_modules");
-        const modules = await moduleSDK.get({ community_id });
-
-        return res.status(200).json({
-          error: false,
-          message: "Modules fetched successfully",
-          modules: modules || [] // Return empty array if no modules
-        });
-      }
-      catch (err) {
-        console.error("Error fetching modules:", err);
-        res.status(500).json({
-          error: true,
-          message: "Failed to fetch modules",
-          details: process.env.NODE_ENV === 'development' ? err.message : undefined
-        });
-      }
-    }
-  );
-
-  // get module
-  app.get("/v1/api/communities/:community_id/modules/:module_id",
-    [UrlMiddleware, TokenMiddleware({"role": "convener"})],
-    async function (req, res) {
-      try {
-        const { community_id, module_id } = req.params;
-
-        const validationResult = await ValidationService.validateObject(
-          {
-            community_id: "required|integer",
-            module_id: "required|integer"
-          },
-          {
-            community_id,
-            module_id
-          }
-        );
-        if (validationResult.error)
-          return res.status(400).json(validationResult)
-        
-      const sdk = new BackendSDK();
-      sdk.setTable("community_modules");
-      const module = (await sdk.get({ id: module_id, community_id }))[0];
-      if (!module) {
-        return res.status(404).json({
-          error: true,
-          message: "module not found",
-        });
-      }
-      return res.status(200).json({
-        error: false,
-        message: "module fetched successfully",
-        module
-      });
-    }
-      catch (err) {
-        console.error(err);
-        res.status(500).json({
-          error: true,
-          message: "something went wrong",
-        });
-      }
-    }
-  )
-
-
-  // edit module
-  app.put(
-    "/v1/api/communities/:community_id/modules/:module_id",
-    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
-    async function (req, res) {
-      try {
-        const { module_id, community_id } = req.params;
-        const { title, status, order_number } = req.body;
-
-        const validationResult = await ValidationService.validateObject(
-          {
-            module_id: "required|integer",
-            community_id: "required|integer",
-            title: "string",
-            status: `in:${Object.values(MODULE_STATUSES).join(",")}`,
-            order_number: "integer",
-          },
-          {
-            module_id,
-            community_id,
-            title,
-            status,
-            order_number,
-          }
-        );
-        if (validationResult.error)
-          return res.status(400).json(validationResult);
-
-        const sdk = new BackendSDK();
-        sdk.setTable("community_modules");
-
-        await sdk.updateWhere(
-          {
-            ...(title !== undefined ? { title } : {}),
-            ...(order_number !== undefined ? { order_number } : {}),
-            ...(status !== undefined ? { status } : {}),
-          },
-          { id: module_id, community_id }
-        );
-
-        return res.status(200).json({
-          error: false,
-          message: "module updated successfully",
-        });
-      } catch (err) {
-        console.error(err);
-        res.status(500);
-        res.json({
-          error: true,
-          message: "something went wrong",
-        });
-      }
-    }
-  );
-
-  // delete module
-  app.delete(
-    "/v1/api/communities/:community_id/modules/:module_id",
-    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
-    async function (req, res) {
-      try {
-        const { module_id, community_id } = req.params;
-        const validationResult = await ValidationService.validateObject(
-          {
-            module_id: "required|integer",
-            community_id: "required|integer",
-          },
-          {
-            module_id,
-            community_id,
-          }
-        );
-        if (validationResult.error)
-          return res.status(400).json(validationResult);
-
         const sdk = new BackendSDK();
 
-        sdk.setTable("community_modules");
-        await sdk.deleteWhere({
-          id: module_id,
-          community_id: community_id,
-        });
+        // Verify ownership
+        sdk.setTable("communities");
+        const community = (await sdk.get({ id: community_id }))[0];
 
-        return res.status(200).json({
-          error: false,
-          message: "module deleted successfully",
-        });
-      } catch (err) {
-        console.error(err);
-        res.status(500);
-        res.json({
-          error: true,
-          message: "something went wrong",
-        });
-      }
-    }
-  );
-
-  // create lesson
-  app.post(
-    "/v1/api/modules/:module_id/lessons",
-    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
-    async function (req, res) {
-      try {
-        const { module_id } = req.params;
-        const { name, description, media, order_number } = req.body;
-        const validationResult = await ValidationService.validateObject(
-          {
-            module_id: "required|integer",
-            name: "required|string",
-            description: "string",
-            media: "url",
-            order_number: "required|integer",
-          },
-          {
-            module_id,
-            name,
-            description,
-            media,
-            order_number,
-          }
-        );
-        if (validationResult.error)
-          return res.status(400).json(validationResult);
-
-        const sdk = new BackendSDK();
-
-        sdk.setTable("module_lessons");
-        const lesson_id = await sdk.insert({
-          module_id,
-          name,
-          description,
-          media,
-          order_number,
-          status: LESSON_STATUSES.DRAFT,
-        });
-
-        return res.status(201).json({
-          error: false,
-          message: "lesson created successfully",
-          lesson_id,
-        });
-      } catch (err) {
-        console.error(err);
-        res.status(500);
-        res.json({
-          error: true,
-          message: "something went wrong",
-        });
-      }
-    }
-  );
-
-  // get lessons
-  app.get(
-    "/v1/api/modules/:module_id/lessons",
-    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
-    async function (req, res) {
-      try {
-        const { module_id } = req.params;
-
-        const validationResult = await ValidationService.validateObject(
-          {
-            module_id: "required|integer",
-          },
-          {
-            module_id,
-          }
-        );
-        if (validationResult.error)
-          return res.status(400).json(validationResult);
-
-        const sdk = new BackendSDK();
-        sdk.setTable("module_lessons");
-
-        const lessons = await sdk.get({ module_id });
-
-        return res.status(200).json({
-          error: false,
-          message: "lessons fetched successfully",
-          lessons,
-        });
-      } catch (err) {
-        console.error(err);
-        res.status(500);
-        res.json({
-          error: true,
-          message: "something went wrong",
-        });
-      }
-    }
-  );
-
-  // get lesson
-  app.get(
-    "/v1/api/modules/:module_id/lessons/:lesson_id",
-    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
-    async function (req, res) {
-      try {
-        const { module_id, lesson_id } = req.params;
-
-        const validationResult = await ValidationService.validateObject(
-          {
-            module_id: "required|integer",
-            lesson_id: "required|integer",
-          },
-          {
-            module_id,
-            lesson_id,
-          }
-        );
-        if (validationResult.error)
-          return res.status(400).json(validationResult);
-
-        const sdk = new BackendSDK();
-        sdk.setTable("module_lessons");
-
-        const lesson = (await sdk.get({ id: lesson_id, module_id }))[0];
-        if (!lesson) {
+        if (!community) {
           return res.status(404).json({
             error: true,
-            message: "lesson not found",
+            message: "Community not found",
           });
         }
 
-        return res.status(200).json({
-          error: false,
-          message: "lesson fetched successfully",
-          lesson,
-        });
-      } catch (err) {
-        console.error(err);
-        res.status(500);
-        res.json({
-          error: true,
-          message: "something went wrong",
-        });
-      }
-    }
-  );
-  
-  // edit lesson
-  app.put(
-    "/v1/api/modules/:module_id/lessons/:lesson_id",
-    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
-    async function (req, res) {
-      try {
-        const { module_id, lesson_id } = req.params;
-        const { name, description, media, status, order_number } = req.body;
+        if (community.owner_id !== req.user_id) {
+          return res.status(403).json({
+            error: true,
+            message: "You do not have permission to remove members from this community",
+          });
+        }
 
-        const validationResult = await ValidationService.validateObject(
-          {
-            module_id: "required|integer",
-            lesson_id: "required|integer",
-            name: "string",
-            description: "string",
-            media: "url",
-            status: `in:${Object.values(LESSON_STATUSES).join(",")}`,
-            order_number: "integer",
-          },
-          {
-            module_id,
-            lesson_id,
-            name,
-            description,
-            media,
-            status,
-            order_number,
-          }
-        );
-        if (validationResult.error)
-          return res.status(400).json(validationResult);
-
-        const sdk = new BackendSDK();
-        sdk.setTable("module_lessons");
-
-        await sdk.updateWhere(
-          {
-            ...(name !== undefined ? { name } : {}),
-            ...(description !== undefined ? { description } : {}),
-            ...(media !== undefined ? { media } : {}),
-            ...(order_number !== undefined ? { order_number } : {}),
-            ...(status !== undefined ? { status } : {}),
-          },
-          { id: lesson_id, module_id }
-        );
+        sdk.setTable("community_members");
+        await sdk.deleteWhere({ community_id, user_id });
 
         return res.status(200).json({
           error: false,
-          message: "lesson updated successfully",
+          message: "Member removed successfully",
         });
       } catch (err) {
         console.error(err);
-        res.status(500);
-        res.json({
-          error: true,
-          message: "something went wrong",
-        });
-      }
-    }
-  );
-
-  // delete lesson
-  app.delete(
-    "/v1/api/modules/:module_id/lessons/:lesson_id",
-    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
-    async function (req, res) {
-      try {
-        const { module_id, lesson_id } = req.params;
-        const validationResult = await ValidationService.validateObject(
-          {
-            module_id: "required|integer",
-            lesson_id: "required|integer",
-          },
-          {
-            module_id,
-            lesson_id,
-          }
-        );
-        if (validationResult.error)
-          return res.status(400).json(validationResult);
-
-        const sdk = new BackendSDK();
-
-        sdk.setTable("module_lessons");
-        await sdk.deleteWhere({
-          id: lesson_id,
-          module_id: module_id,
-        });
-
-        return res.status(200).json({
-          error: false,
-          message: "lesson deleted successfully",
-        });
-      } catch (err) {
-        console.error(err);
-        res.status(500);
-        res.json({
+        res.status(500).json({
           error: true,
           message: "something went wrong",
         });

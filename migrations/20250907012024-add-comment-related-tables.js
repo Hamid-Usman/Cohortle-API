@@ -1,8 +1,8 @@
-'use strict';
+"use strict";
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
-  async up (queryInterface, Sequelize) {
+  async up(queryInterface, Sequelize) {
     await queryInterface.createTable("comments", {
       id: {
         type: Sequelize.INTEGER,
@@ -36,12 +36,16 @@ module.exports = {
         allowNull: false,
         defaultValue: Sequelize.NOW,
       },
-    })
+    });
   },
 
-  async down (queryInterface, Sequelize) {
+  async down(queryInterface, Sequelize) {
     await queryInterface.dropTable("comments");
-    await queryInterface.sequelize.query('DROP TYPE IF EXISTS "enum_comments_status";');
-    await queryInterface.sequelize.query('DROP TYPE IF EXISTS "enum_comments_can_reply";');
-  }
+    await queryInterface.sequelize.query(
+      'DROP TYPE IF EXISTS "enum_comments_status";',
+    );
+    await queryInterface.sequelize.query(
+      'DROP TYPE IF EXISTS "enum_comments_can_reply";',
+    );
+  },
 };

@@ -42,7 +42,7 @@ module.exports = function (app) {
             community_ids,
             mentioned_ids,
             can_reply,
-          }
+          },
         );
         if (validationResult.error)
           return res.status(400).json(validationResult);
@@ -77,11 +77,11 @@ module.exports = function (app) {
           message: "something went wrong",
         });
       }
-    }
+    },
   );
 
-
-  app.get("/v1/api/posts",
+  app.get(
+    "/v1/api/posts",
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],
     async function (req, res) {
       try {
@@ -107,7 +107,7 @@ module.exports = function (app) {
               ...post,
               posted_by: userData,
             };
-          })
+          }),
         );
 
         return res.status(200).json({
@@ -123,27 +123,28 @@ module.exports = function (app) {
           message: "something went wrong",
         });
       }
-    }
-  )
+    },
+  );
 
-  app.get("/v1/posts/:post_id", 
-    [UrlMiddleware,TokenMiddleware({ role: "convener" })],
+  app.get(
+    "/v1/posts/:post_id",
+    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
     async function (req, res) {
       try {
         const { post_id } = req.params;
         console.log(`Fetching post with ID: ${post_id}`);
-        
+
         // ✅ Validate post_id
         const validationResult = await ValidationService.validateObject(
           { post_id: "required|integer" },
-          { post_id }
+          { post_id },
         );
-        
+
         if (validationResult.error) {
           console.log("Validation failed:", validationResult);
           return res.status(400).json(validationResult);
         }
-      
+
         // ✅ Fetch post
         const sdk = new BackendSDK();
         sdk.setTable("posts");
@@ -153,15 +154,15 @@ module.exports = function (app) {
         const post = Array.isArray(posts) ? posts[0] : posts;
 
         console.log("Found post:", post);
-        
+
         if (!post) {
           console.log(`Post not found for ID: ${post_id}`);
           return res.status(404).json({
             error: true,
-            message: "Post not found"
+            message: "Post not found",
           });
         }
-        
+
         // ✅ Fetch user details
         const userSdk = new BackendSDK();
         userSdk.setTable("users");
@@ -190,26 +191,23 @@ module.exports = function (app) {
             posted_by: userData,
           },
         });
-      
       } catch (err) {
         console.error("Error retrieving post:", err);
         return res.status(500).json({
           error: true,
-          message: "Internal server error"
+          message: "Internal server error",
         });
       }
-    } 
+    },
   );
 
-  app.post("/v1/post/:post_id/comments", 
+  app.post(
+    "/v1/post/:post_id/comments",
     [UrlMiddleware, TokenMiddleware({ role: "convener" })],
     async function (req, res) {
       try {
         const { post_id } = req.params;
-        const {
-          text,
-          media_1
-        } = req.body;
+        const { text, media_1 } = req.body;
         const validationResult = await ValidationService.validateObject(
           {
             text: "required|string",
@@ -220,23 +218,24 @@ module.exports = function (app) {
             text,
             media_1,
             post_id,
-          })
-          if (validationResult.error) {
-            return res.status(400).json(validationResult)
-          }
-          const sdk = new BackendSDK();
-          sdk.setTable("comments");
-          const comment_id = await sdk.insert({
-            text,
-            media_1,
-            post_id,
-            commented_by: req.user_id,
-          })
-          return res.status(200).json({
-            error: false,
-            message: "comment added successfully",
-            comment_id,
-          })
+          },
+        );
+        if (validationResult.error) {
+          return res.status(400).json(validationResult);
+        }
+        const sdk = new BackendSDK();
+        sdk.setTable("comments");
+        const comment_id = await sdk.insert({
+          text,
+          media_1,
+          post_id,
+          commented_by: req.user_id,
+        });
+        return res.status(200).json({
+          error: false,
+          message: "comment added successfully",
+          comment_id,
+        });
       } catch (err) {
         console.error(err);
         res.status(500);
@@ -244,72 +243,73 @@ module.exports = function (app) {
           error: true,
           message: "something went wrong",
         });
-        console.log(req.body)
-        } 
-    }
-  )
-
-app.get("/v1/post/:post_id/comments",
-  [UrlMiddleware, TokenMiddleware()],
-  async function (req, res) {
-    try {
-      const { post_id } = req.params;
-
-      // Validate
-      const validationResult = await ValidationService.validateObject(
-        { post_id: "required|integer" },
-        { post_id }
-      );
-      if (validationResult.error) {
-        return res.status(400).json(validationResult);
+        console.log(req.body);
       }
+    },
+  );
 
-      // Fetch comments
-      const sdk = new BackendSDK();
-      sdk.setTable("comments");
-      const comments = await sdk.get({ post_id });
+  app.get(
+    "/v1/post/:post_id/comments",
+    [UrlMiddleware, TokenMiddleware()],
+    async function (req, res) {
+      try {
+        const { post_id } = req.params;
 
-      // Collect user IDs
-      const userIds = [...new Set(comments.map(c => c.commented_by))];
+        // Validate
+        const validationResult = await ValidationService.validateObject(
+          { post_id: "required|integer" },
+          { post_id },
+        );
+        if (validationResult.error) {
+          return res.status(400).json(validationResult);
+        }
 
-      // Fetch users in one query
-      const userSdk = new BackendSDK();
-      userSdk.setTable("users");
-      const users = [];
-      for (const id of userIds) {
-        const [user] = await userSdk.get({ id });
-        if (user) users.push(user);
+        // Fetch comments
+        const sdk = new BackendSDK();
+        sdk.setTable("comments");
+        const comments = await sdk.get({ post_id });
+
+        // Collect user IDs
+        const userIds = [...new Set(comments.map((c) => c.commented_by))];
+
+        // Fetch users in one query
+        const userSdk = new BackendSDK();
+        userSdk.setTable("users");
+        const users = [];
+        for (const id of userIds) {
+          const [user] = await userSdk.get({ id });
+          if (user) users.push(user);
+        }
+        const userMap = Object.fromEntries(users.map((u) => [u.id, u]));
+
+        // Merge users with comments
+        const commentWithUser = comments.map((comment) => ({
+          ...comment,
+          user: userMap[comment.commented_by]
+            ? {
+                first_name: userMap[comment.commented_by].first_name,
+                last_name: userMap[comment.commented_by].last_name,
+              }
+            : null,
+        }));
+        console.log(commentWithUser);
+        return res.status(200).json({
+          error: false,
+          message: "Comments fetched successfully",
+          comments: commentWithUser,
+        });
+      } catch (err) {
+        console.error(err);
+        return res.status(500).json({
+          error: true,
+          message: "Something went wrong",
+        });
       }
-      const userMap = Object.fromEntries(users.map(u => [u.id, u]));
+    },
+  );
 
-      // Merge users with comments
-      const commentWithUser = comments.map(comment => ({
-        ...comment,
-        user: userMap[comment.commented_by]
-          ? {
-              first_name: userMap[comment.commented_by].first_name,
-              last_name: userMap[comment.commented_by].last_name,
-            }
-          : null,
-      }));
-      console.log(commentWithUser);
-      return res.status(200).json({
-        error: false,
-        message: "Comments fetched successfully",
-        comments: commentWithUser,
-      });
-
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({
-        error: true,
-        message: "Something went wrong",
-      });
-    }
-  }
-);
-
-  app.delete("/v1/post/:post_id/comment/:comment_id",
+  app.delete(
+    "/v1/post/:post_id/comment/:comment_id",
     [UrlMiddleware],
     async function (req, res) {
       try {
@@ -322,29 +322,28 @@ app.get("/v1/post/:post_id/comments",
           {
             post_id,
             comment_id,
-          })
-          if (validationResult.error) {
-            return res.status(400).json(validationResult)
-          }
-          const sdk = new BackendSDK();
-          sdk.setTable("comments");
-          const deleted = await sdk.delete({post_id}, comment_id);
-          return res.status(200).json({
-            error: false,
-            message: "comment deleted successfully",
-            deleted,
-          })
-      }
-      catch (err) {
+          },
+        );
+        if (validationResult.error) {
+          return res.status(400).json(validationResult);
+        }
+        const sdk = new BackendSDK();
+        sdk.setTable("comments");
+        const deleted = await sdk.delete({ post_id }, comment_id);
+        return res.status(200).json({
+          error: false,
+          message: "comment deleted successfully",
+          deleted,
+        });
+      } catch (err) {
         console.error(err);
         res.status(500);
         res.json({
           error: true,
           message: "something went wrong",
         });
-        console.log(req.body)
+        console.log(req.body);
       }
-    }
-  )
-
-}
+    },
+  );
+};

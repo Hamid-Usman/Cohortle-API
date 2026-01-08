@@ -59,6 +59,6 @@ function createSequelizeConnection(config) {
         underscoredAll: true,
         underscored: true,
       },
-    }
+    },
   );
 }

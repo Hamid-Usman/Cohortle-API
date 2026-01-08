@@ -9,11 +9,11 @@ module.exports = function (sequelize, DataTypes) {
         allowNull: false,
         primaryKey: true,
       },
-      cohort_owner: {
+      programme_id: {
         type: DataTypes.INTEGER,
         allowNull: false,
         references: {
-          model: "users",
+          model: "programmes",
           key: "id",
         },
       },
@@ -21,9 +21,22 @@ module.exports = function (sequelize, DataTypes) {
         type: DataTypes.STRING(255),
         allowNull: false,
       },
+      start_date: {
+        type: DataTypes.DATEONLY,
+        allowNull: true,
+      },
+      end_date: {
+        type: DataTypes.DATEONLY,
+        allowNull: true,
+      },
       status: {
         type: DataTypes.STRING(255),
         allowNull: false,
+        defaultValue: "active",
+      },
+      max_members: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
       },
     },
     {
@@ -38,9 +51,9 @@ module.exports = function (sequelize, DataTypes) {
           fields: [{ name: "id" }],
         },
         {
-          name: "cohort_owner",
+          name: "idx_programme_id",
           using: "BTREE",
-          fields: [{ name: "cohort_owner" }],
+          fields: [{ name: "programme_id" }],
         },
       ],
     },

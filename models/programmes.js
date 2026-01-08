@@ -1,7 +1,7 @@
 const Sequelize = require("sequelize");
 module.exports = function (sequelize, DataTypes) {
   return sequelize.define(
-    "community_modules",
+    "programmes",
     {
       id: {
         autoIncrement: true,
@@ -17,23 +17,55 @@ module.exports = function (sequelize, DataTypes) {
           key: "id",
         },
       },
-      title: {
+      name: {
         type: DataTypes.STRING(255),
         allowNull: false,
+      },
+      description: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
+      start_date: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+      end_date: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+      metadata: {
+        type: DataTypes.JSON,
+        allowNull: true,
       },
       status: {
-        type: DataTypes.STRING(255),
+        type: DataTypes.STRING(100),
+        allowNull: false,
+        defaultValue: "draft",
+      },
+      type: {
+        type: DataTypes.ENUM("scheduled", "structured", "self_paced"),
+        defaultValue: "scheduled",
         allowNull: false,
       },
-      order_number: {
+      settings: {
+        type: DataTypes.JSON,
+        allowNull: true,
+      },
+      created_by: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: true,
+      },
+      thumbnail: {
+        type: DataTypes.TEXT,
+        allowNull: true,
       },
     },
     {
       sequelize,
-      tableName: "community_modules",
+      tableName: "programmes",
       timestamps: true,
+      createdAt: "created_at",
+      updatedAt: "updated_at",
       indexes: [
         {
           name: "PRIMARY",
