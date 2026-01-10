@@ -46,7 +46,7 @@ module.exports = function (app) {
         const { role } = req.body;
         const validationResult = await ValidationService.validateObject(
           {
-            role: "required|in:convener,learner",
+            role: "required|in:convener,instructor,learner",
           },
           { role },
         );
@@ -131,7 +131,7 @@ module.exports = function (app) {
     [
       upload.single("image"),
       UrlMiddleware,
-      TokenMiddleware({ role: "learner|convener" }),
+      TokenMiddleware({ role: "learner|convener|instructor" }),
     ],
     async (req, res) => {
       try {
@@ -219,7 +219,7 @@ module.exports = function (app) {
    */
   app.get(
     "/v1/api/profile",
-    [UrlMiddleware, TokenMiddleware({ role: "learner|convener" })],
+    [UrlMiddleware, TokenMiddleware({ role: "learner|convener|instructor" })],
     async function (req, res) {
       try {
         const sdk = new BackendSDK();

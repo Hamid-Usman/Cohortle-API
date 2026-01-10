@@ -19,6 +19,7 @@ const lessonProgressRoutes = require("./routes/lesson_progress");
 const scheduleRoutes = require("./routes/schedule");
 const lessonCommentRoutes = require("./routes/lesson_comment");
 const postRoutes = require("./routes/post");
+const onboardingRoutes = require("./routes/onboarding");
 
 const app = express();
 
@@ -99,6 +100,7 @@ lessonProgressRoutes(app);
 scheduleRoutes(app);
 lessonCommentRoutes(app);
 postRoutes(app);
+onboardingRoutes(app);
 
 // =====================
 // Fallback Routes

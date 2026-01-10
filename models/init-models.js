@@ -15,6 +15,7 @@ var _module_lessons = require("./module_lessons");
 var _lesson_comments = require("./lesson_comments");
 var _programme_progress = require("./programme_progress");
 var _programmes = require("./programmes");
+var _programme_intents = require("./programme_intents");
 var _users = require("./users");
 
 function initModels(sequelize) {
@@ -34,6 +35,7 @@ function initModels(sequelize) {
   var lesson_comments = _lesson_comments(sequelize, DataTypes);
   var programme_progress = _programme_progress(sequelize, DataTypes);
   var programmes = _programmes(sequelize, DataTypes);
+  var programme_intents = _programme_intents(sequelize, DataTypes);
   var users = _users(sequelize, DataTypes);
 
   // Community Associations
@@ -113,6 +115,10 @@ function initModels(sequelize) {
   activity_logs.belongsTo(users, { as: "user", foreignKey: "user_id" });
   users.hasMany(activity_logs, { as: "activity_logs", foreignKey: "user_id" });
 
+  // Programme Intent Associations
+  programme_intents.belongsTo(users, { as: "user", foreignKey: "user_id" });
+  users.hasMany(programme_intents, { as: "programme_intents", foreignKey: "user_id" });
+
   // Programme Progress
   programme_progress.belongsTo(users, { as: "user", foreignKey: "user_id" });
   users.hasMany(programme_progress, { as: "progress", foreignKey: "user_id" });
@@ -138,6 +144,7 @@ function initModels(sequelize) {
     lesson_comments,
     programme_progress,
     programmes,
+    programme_intents,
     users,
   };
 }

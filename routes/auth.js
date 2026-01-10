@@ -48,8 +48,10 @@ module.exports = function (app) {
           {
             email: "required|email",
             password: "required|string",
+            first_name: "required|string",
+            last_name: "required|string",
           },
-          { email, password },
+          { email, password, first_name, last_name },
         );
         if (validationResult.error)
           return res.status(400).json(validationResult);
@@ -72,6 +74,8 @@ module.exports = function (app) {
         const newUserId = await sdk.insert({
           email,
           password: hashedPassword,
+          first_name,
+          last_name,
           role: null,
           status: USER_STATUSES.INACTIVE,
         });

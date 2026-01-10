@@ -134,7 +134,7 @@ module.exports = function (app) {
   // get communities for both users
   app.get(
     "/v1/api/communities",
-    [UrlMiddleware, TokenMiddleware({ role: "learner|convener" })],
+    [UrlMiddleware, TokenMiddleware({ role: "learner|instructor|convener" })],
     async function (req, res) {
       try {
         const { user_id, role } = req; // now available from TokenMiddleware
@@ -241,7 +241,6 @@ module.exports = function (app) {
         await sdk.insert({
           community_id,
           user_id,
-          role: "learner",
           status: "active"
         });
 
@@ -272,7 +271,7 @@ module.exports = function (app) {
    */
   app.get(
     "/v1/api/communities/joined",
-    [UrlMiddleware, TokenMiddleware({ role: "convener|learner" })],
+    [UrlMiddleware, TokenMiddleware({ role: "instructor|learner" })],
     async function (req, res) {
       try {
         const { user_id } = req;

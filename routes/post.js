@@ -74,7 +74,7 @@ module.exports = function (app) {
             media_2: "url",
             media_3: "url",
             media_4: "url",
-            community_ids: "commaInt",
+            community_ids: "commaInt|string",
             mentioned_ids: "commaInt",
             can_reply: `required|in:${Object.values(POST_REPLY).join(",")}`,
           },
@@ -141,7 +141,7 @@ module.exports = function (app) {
    */
   app.get(
     "/v1/api/posts",
-    [UrlMiddleware, TokenMiddleware({ role: "convener" })],
+    [UrlMiddleware, TokenMiddleware({ role: "convener|learner|instructor" })],
     async function (req, res) {
       try {
         const sdk = new BackendSDK();
@@ -150,7 +150,30 @@ module.exports = function (app) {
         const userSdk = new BackendSDK();
         userSdk.setTable("users");
 
-        const postsWithUsers = await Promise.all(
+        // Collect all community IDs from all posts
+        const allCommunityIds = new Set();
+        posts.forEach(post => {
+          if (post.community_ids) {
+            const ids = post.community_ids.toString().split(',').map(id => id.trim());
+            ids.forEach(id => allCommunityIds.add(id));
+          }
+        });
+
+        // Fetch all relevant communities in one go
+        const communitySdk = new BackendSDK();
+        let communityMap = {};
+        if (allCommunityIds.size > 0) {
+          const idsArray = Array.from(allCommunityIds);
+          const communities = await communitySdk.rawQuery(`
+                SELECT id, name FROM communities WHERE id IN (${idsArray.join(',')})
+            `);
+          communityMap = communities.reduce((acc, comm) => {
+            acc[comm.id] = comm.name;
+            return acc;
+          }, {});
+        }
+
+        const postsWithDetails = await Promise.all(
           posts.map(async (post) => {
             const [user] = await userSdk.get({ id: post.posted_by });
 
@@ -159,11 +182,22 @@ module.exports = function (app) {
                 first_name: user.first_name,
                 last_name: user.last_name,
                 email: user.email,
+                role: user.role,
               }
               : null;
 
+            // Map community IDs to names
+            let communityNames = [];
+            if (post.community_ids) {
+              const ids = post.community_ids.toString().split(',').map(id => id.trim());
+              communityNames = ids.map(id => communityMap[id]).filter(Boolean);
+            }
+
+            const { community_ids, ...postData } = post; // Remove community_ids
+
             return {
-              ...post,
+              ...postData,
+              community_names: communityNames,
               posted_by: userData,
             };
           }),
@@ -172,7 +206,7 @@ module.exports = function (app) {
         return res.status(200).json({
           error: false,
           message: "posts fetched successfully",
-          posts: postsWithUsers,
+          posts: postsWithDetails,
         });
       } catch (err) {
         console.error(err);
@@ -259,6 +293,27 @@ module.exports = function (app) {
           }
           : null;
 
+        // ✅ Fetch Community Names
+        let communityNames = [];
+        if (post.community_ids) {
+          const ids = post.community_ids.toString().split(',').map(id => id.trim());
+          if (ids.length > 0) {
+            const communitySdk = new BackendSDK();
+            const communities = await communitySdk.rawQuery(`
+                    SELECT id, name FROM communities WHERE id IN (${ids.join(',')})
+                `);
+
+            const communityMap = communities.reduce((acc, comm) => {
+              acc[comm.id] = comm.name;
+              return acc;
+            }, {});
+
+            communityNames = ids.map(id => communityMap[id]).filter(Boolean);
+          }
+        }
+
+        const { community_ids, ...postData } = post; // Remove community_ids
+
         // ✅ Prevent caching
         res.setHeader("Cache-Control", "no-store");
         res.setHeader("Pragma", "no-cache");
@@ -268,7 +323,8 @@ module.exports = function (app) {
           error: false,
           message: "Post retrieved successfully",
           post: {
-            ...post,
+            ...postData,
+            community_names: communityNames,
             posted_by: userData,
           },
         });
