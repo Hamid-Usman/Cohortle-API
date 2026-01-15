@@ -23,6 +23,8 @@ module.exports = function (app) {
    *             required:
    *               - email
    *               - password
+   *               - first_name
+   *               - last_name
    *             properties:
    *               email:
    *                 type: string
@@ -30,6 +32,12 @@ module.exports = function (app) {
    *               password:
    *                 type: string
    *                 example: StrongPassword123
+   *               first_name:
+   *                 type: string
+   *                 example: John
+   *               last_name:
+   *                 type: string
+   *                 example: Doe
    *     responses:
    *       200:
    *         description: Registration successful, verification email sent
@@ -41,7 +49,7 @@ module.exports = function (app) {
     [UrlMiddleware],
     async function (req, res) {
       try {
-        const { email, password } = req.body;
+        const { email, password, first_name, last_name } = req.body;
 
         // validate email and password
         const validationResult = await ValidationService.validateObject(

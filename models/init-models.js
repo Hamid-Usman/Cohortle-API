@@ -12,6 +12,7 @@ var _discussions = require("./discussions");
 var _lessonProgress = require("./lessonProgress");
 var _lesson_schedule = require("./lesson_schedule");
 var _module_lessons = require("./module_lessons");
+var _partner_contexts = require("./partner_contexts");
 var _lesson_comments = require("./lesson_comments");
 var _programme_progress = require("./programme_progress");
 var _programmes = require("./programmes");
@@ -32,6 +33,7 @@ function initModels(sequelize) {
   var lessonProgress = _lessonProgress(sequelize, DataTypes);
   var lesson_schedule = _lesson_schedule(sequelize, DataTypes);
   var module_lessons = _module_lessons(sequelize, DataTypes);
+  var partner_contexts = _partner_contexts(sequelize, DataTypes);
   var lesson_comments = _lesson_comments(sequelize, DataTypes);
   var programme_progress = _programme_progress(sequelize, DataTypes);
   var programmes = _programmes(sequelize, DataTypes);
@@ -119,6 +121,10 @@ function initModels(sequelize) {
   programme_intents.belongsTo(users, { as: "user", foreignKey: "user_id" });
   users.hasMany(programme_intents, { as: "programme_intents", foreignKey: "user_id" });
 
+  // Partner Context Associations
+  partner_contexts.belongsTo(users, { as: "user", foreignKey: "user_id" });
+  users.hasOne(partner_contexts, { as: "partner_context", foreignKey: "user_id" });
+
   // Programme Progress
   programme_progress.belongsTo(users, { as: "user", foreignKey: "user_id" });
   users.hasMany(programme_progress, { as: "progress", foreignKey: "user_id" });
@@ -145,6 +151,7 @@ function initModels(sequelize) {
     programme_progress,
     programmes,
     programme_intents,
+    partner_contexts,
     users,
   };
 }
