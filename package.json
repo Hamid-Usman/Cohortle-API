@@ -30,6 +30,7 @@
     "sequelize": "^6.37.7",
     "sequelize-cli": "^6.6.2",
     "sequelize-auto": "^0.8.8",
+    "streamifier": "^0.1.1",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "yamljs": "^0.3.0"
