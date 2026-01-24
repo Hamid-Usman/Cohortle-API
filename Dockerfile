@@ -18,8 +18,11 @@ RUN addgroup -S nodegroup && adduser -S nodeuser -G nodegroup
 
 COPY --from=builder /app /app
 
+# Copy entrypoint + make executable INSIDE the image
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 USER nodeuser
 
 EXPOSE 3000
-CMD ["node", "bin/www"]
-
+ENTRYPOINT ["docker-entrypoint.sh"]
