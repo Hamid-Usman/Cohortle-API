@@ -46,7 +46,7 @@ module.exports = function (app) {
      */
     app.post(
         "/v1/api/onboarding/programme-intent",
-        [UrlMiddleware, TokenMiddleware({ role: "convener" })],
+        [UrlMiddleware, TokenMiddleware({ role: "convener|instructor" })],
         async function (req, res) {
             try {
                 const {
@@ -136,7 +136,7 @@ module.exports = function (app) {
      */
     app.post(
         "/v1/api/onboarding/context",
-        [UrlMiddleware, TokenMiddleware({ role: "convener" })],
+        [UrlMiddleware, TokenMiddleware({ role: "convener|instructor" })],
         async function (req, res) {
             try {
                 const { learner_types, biggest_challenges } = req.body;
