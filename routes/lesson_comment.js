@@ -134,10 +134,49 @@ module.exports = function (app) {
 
                 const comments = await sdk.get(query, "*", "created_at", "DESC");
 
+                // Fetch commenter user info (first_name, last_name, profile_image)
+                const userIds = [
+                    ...new Set(comments.map((c) => c.user_id).filter((id) => !!id)),
+                ];
+
+                let commentsWithUser = comments;
+                if (userIds.length > 0) {
+                    const userSdk = new BackendSDK();
+                    userSdk.setTable("users");
+
+                    // Use customWhere to query multiple ids (BackendSDK supports customWhere)
+                    const users = await userSdk.get(
+                        {},
+                        "id,first_name,last_name,profile_image",
+                        "id",
+                        "ASC",
+                        `id IN (${userIds.join(",")})`
+                    );
+
+                    const usersMap = {};
+                    users.forEach((u) => {
+                        usersMap[u.id] = u;
+                    });
+
+                    commentsWithUser = comments.map((c) => {
+                        const u = usersMap[c.user_id] || {};
+                        const fullName = [u.first_name, u.last_name]
+                            .filter(Boolean)
+                            .join(" ");
+
+                        return Object.assign({}, c, {
+                            user_full_name: fullName || null,
+                            user_first_name: u.first_name || null,
+                            user_last_name: u.last_name || null,
+                            user_profile_image: u.profile_image || null,
+                        });
+                    });
+                }
+
                 return res.status(200).json({
                     error: false,
                     message: "Comments fetched successfully",
-                    comments,
+                    comments: commentsWithUser,
                 });
             } catch (err) {
                 console.error(err);

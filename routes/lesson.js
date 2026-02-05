@@ -404,14 +404,14 @@ module.exports = function (app) {
         async function (req, res) {
             try {
                 const { lesson_id } = req.params;
-                const { cohort_id } = req.body;
+                // const { cohort_id } = req.body;
 
                 const validationResult = await ValidationService.validateObject(
                     {
                         lesson_id: "required|integer",
-                        cohort_id: "required|integer",
+                        // cohort_id: "required|integer",
                     },
-                    { lesson_id, cohort_id }
+                    { lesson_id }
                 );
 
                 if (validationResult.error) {
@@ -425,7 +425,7 @@ module.exports = function (app) {
                 const existing = await sdk.get({
                     user_id: req.user_id,
                     lesson_id,
-                    cohort_id,
+                    // cohort_id,
                 });
 
                 if (existing.length > 0) {
@@ -442,7 +442,7 @@ module.exports = function (app) {
                     await sdk.insert({
                         user_id: req.user_id,
                         lesson_id,
-                        cohort_id,
+                        // cohort_id,
                         completed: true,
                         completed_at: new Date(),
                     });
